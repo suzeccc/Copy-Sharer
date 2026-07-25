@@ -22,9 +22,10 @@ use crate::{
     clipboard,
     error::{AppError, AppResult},
     history,
+    i18n,
     models::{
         ClipboardContentType, ClipboardMessage, ClipboardTextItem, HistoryDirection, HistoryItem,
-        MobileSessionMode, MobileSessionPhase, MobileSessionView, SyncStatus,
+        MobileSessionMode, MobileSessionPhase, MobileSessionView, SyncStatus, UiLanguage,
     },
     network,
     notifications,
@@ -791,9 +792,13 @@ async fn route_mobile_request(
     app: AppHandle,
     state: AppState,
 ) -> String {
+    let config = state.config().await;
+    let localized_error = |status, message: &str| {
+        http_error(status, &i18n::translate(&config, message))
+    };
     let parsed = match url::Url::parse(&format!("http://copyshare.local{}", request.target)) {
         Ok(url) => url,
-        Err(_) => return http_error(400, "请求地址无效"),
+        Err(_) => return localized_error(400, "请求地址无效"),
     };
     let path = parsed.path();
     let token = parsed
@@ -804,13 +809,17 @@ async fn route_mobile_request(
 
     if request.method == "GET" && path.starts_with("/m/") {
         let id = path.trim_start_matches("/m/").trim_matches('/');
-        return http_html(200, &mobile_page_html(id, &token));
+        let mut page = i18n::translate(&config, &mobile_page_html(id, &token));
+        if i18n::effective_language(config.ui_language) == UiLanguage::EnUs {
+            page = page.replace("lang=\"zh-CN\"", "lang=\"en-US\"");
+        }
+        return http_html(200, &page);
     }
 
     if let Some(id) = path.strip_prefix("/api/mobile/session/") {
         let id = id.trim_matches('/');
         if token.is_empty() {
-            return http_error(403, "二维码 token 无效");
+            return localized_error(403, "二维码 token 无效");
         }
         if request.method == "GET" {
             let mut store = sessions.lock().await;
@@ -822,16 +831,16 @@ async fn route_mobile_request(
                         if view.mode == MobileSessionMode::ReceiveFromMobile {
                             Vec::new()
                         } else {
-                            return http_error(400, &error.to_string());
+                            return localized_error(400, &error.to_string());
                         }
                     } else {
-                        return http_error(400, &error.to_string());
+                        return localized_error(400, &error.to_string());
                     }
                 }
             };
             let view = match store.get_session_view(id) {
                 Ok(view) => view,
-                Err(error) => return http_error(400, &error.to_string()),
+                Err(error) => return localized_error(400, &error.to_string()),
             };
             let content = content_items.first().map(|item| item.text.clone());
             let response = MobileContentResponse {
@@ -850,14 +859,14 @@ async fn route_mobile_request(
         if request.method == "POST" {
             let body = match serde_json::from_slice::<MobilePostBody>(&request.body) {
                 Ok(body) => body,
-                Err(_) => return http_error(400, "请求正文无效"),
+                Err(_) => return localized_error(400, "请求正文无效"),
             };
             let action = body.action.unwrap_or_default();
             if action == "copied" {
                 let mut store = sessions.lock().await;
                 return match store.mark_send_copied(id, &token) {
                     Ok(view) => http_json(200, &view),
-                    Err(error) => http_error(400, &error.to_string()),
+                    Err(error) => localized_error(400, &error.to_string()),
                 };
             }
 
@@ -865,12 +874,12 @@ async fn route_mobile_request(
             {
                 let mut store = sessions.lock().await;
                 if let Err(error) = store.submit_mobile_content(id, &token, content.clone()) {
-                    return http_error(400, &error.to_string());
+                    return localized_error(400, &error.to_string());
                 }
             }
             let message = mobile_clipboard_message(content);
             if let Err(error) = clipboard::write_clipboard_text(&app, &message.content) {
-                return http_error(500, &error.to_string());
+                return localized_error(500, &error.to_string());
             }
             state.apply_remote_clipboard(&message).await;
             notifications::notify_mobile_clipboard_received(
@@ -879,17 +888,17 @@ async fn route_mobile_request(
                 &message,
             );
             if let Err(error) = record_mobile_submitted_history(&app, &state, &message).await {
-                return http_error(500, &error.to_string());
+                return localized_error(500, &error.to_string());
             }
             let mut store = sessions.lock().await;
             return match store.mark_submitted_content_written(id) {
                 Ok(view) => http_json(200, &view),
-                Err(error) => http_error(400, &error.to_string()),
+                Err(error) => localized_error(400, &error.to_string()),
             };
         }
     }
 
-    http_error(404, "页面不存在")
+    localized_error(404, "页面不存在")
 }
 
 fn mobile_page_html(id: &str, token: &str) -> String {

@@ -3,22 +3,53 @@ use tauri::{
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     App, AppHandle,
 };
-use crate::{notifications, state::AppState, sync};
+use crate::{
+    i18n,
+    models::AppConfig,
+    notifications,
+    state::AppState,
+    sync,
+};
 
 const TRAY_ID: &str = "copyshare-main";
 
 pub fn setup_tray(app: &mut App, state: AppState) -> tauri::Result<()> {
-    let show = MenuItem::with_id(app, "show", "显示窗口", true, None::<&str>)?;
-    let pause = MenuItem::with_id(app, "pause", "暂停同步", true, None::<&str>)?;
-    let resume = MenuItem::with_id(app, "resume", "继续同步", true, None::<&str>)?;
-    let quit = MenuItem::with_id(app, "quit", "退出", true, None::<&str>)?;
+    let config = tauri::async_runtime::block_on(state.config());
+    let show = MenuItem::with_id(
+        app,
+        "show",
+        i18n::translate(&config, "显示窗口"),
+        true,
+        None::<&str>,
+    )?;
+    let pause = MenuItem::with_id(
+        app,
+        "pause",
+        i18n::translate(&config, "暂停同步"),
+        true,
+        None::<&str>,
+    )?;
+    let resume = MenuItem::with_id(
+        app,
+        "resume",
+        i18n::translate(&config, "继续同步"),
+        true,
+        None::<&str>,
+    )?;
+    let quit = MenuItem::with_id(
+        app,
+        "quit",
+        i18n::translate(&config, "退出"),
+        true,
+        None::<&str>,
+    )?;
     let menu = Menu::with_items(app, &[&show, &pause, &resume, &quit])?;
 
     let state_for_menu = state.clone();
 
     TrayIconBuilder::with_id(TRAY_ID)
         .icon(app.default_window_icon().unwrap().clone())
-        .tooltip("CopyShare - 待启动同步")
+        .tooltip(i18n::translate(&config, "CopyShare - 待启动同步"))
         .menu(&menu)
         .show_menu_on_left_click(true)
         .on_menu_event(move |app, event| match event.id.as_ref() {
@@ -63,14 +94,51 @@ pub fn setup_tray(app: &mut App, state: AppState) -> tauri::Result<()> {
     Ok(())
 }
 
+pub fn update_tray_locale(app: &AppHandle, config: &AppConfig) -> tauri::Result<()> {
+    let show = MenuItem::with_id(
+        app,
+        "show",
+        i18n::translate(config, "显示窗口"),
+        true,
+        None::<&str>,
+    )?;
+    let pause = MenuItem::with_id(
+        app,
+        "pause",
+        i18n::translate(config, "暂停同步"),
+        true,
+        None::<&str>,
+    )?;
+    let resume = MenuItem::with_id(
+        app,
+        "resume",
+        i18n::translate(config, "继续同步"),
+        true,
+        None::<&str>,
+    )?;
+    let quit = MenuItem::with_id(
+        app,
+        "quit",
+        i18n::translate(config, "退出"),
+        true,
+        None::<&str>,
+    )?;
+    let menu = Menu::with_items(app, &[&show, &pause, &resume, &quit])?;
+    if let Some(tray) = app.tray_by_id(TRAY_ID) {
+        tray.set_menu(Some(menu))?;
+    }
+    Ok(())
+}
+
 pub async fn update_tray_status(app: &AppHandle, state: &AppState) {
     let status = state.status().await;
+    let config = state.config().await;
     let message = if status.running {
         format!("CopyShare - 运行中，已连接 {} 台设备", status.connected_count)
     } else {
         "CopyShare - 同步已暂停".to_string()
     };
     if let Some(tray) = app.tray_by_id(TRAY_ID) {
-        let _ = tray.set_tooltip(Some(message));
+        let _ = tray.set_tooltip(Some(i18n::translate(&config, &message)));
     }
 }

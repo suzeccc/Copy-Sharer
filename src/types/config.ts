@@ -1,9 +1,11 @@
 export type AppTheme = "copyBlue" | "win11Dark" | "macosLight" | "macosDark";
 export type CloseAction = "ask" | "minimize" | "exit";
 export type TranslationEngine = "google" | "ai";
+export type UiLanguage = "system" | "zh-CN" | "en-US";
 
 export interface AppConfig {
   configVersion: number;
+  uiLanguage: UiLanguage;
   deviceName: string;
   deviceId: string;
   theme: AppTheme;

@@ -260,7 +260,7 @@ function errorMessage(error: unknown, fallback: string) {
                   :key="item.id"
                   class="rounded-2xl border border-[color:var(--main-line-soft)] bg-black/15 p-3"
                 >
-                  <p class="line-clamp-3 break-all text-sm leading-6 text-slate-100">{{ item.text }}</p>
+                <p data-i18n-ignore class="line-clamp-3 break-all text-sm leading-6 text-slate-100">{{ item.text }}</p>
                 </article>
               </div>
               <p v-else class="mt-3 text-sm leading-6 text-[color:var(--muted-text)]">等待手机扫码后读取。</p>
@@ -277,7 +277,7 @@ function errorMessage(error: unknown, fallback: string) {
                   :key="item.id"
                   class="rounded-2xl border border-emerald-300/15 bg-emerald-400/[0.06] p-3"
                 >
-                  <p class="line-clamp-3 break-all text-sm leading-6 text-slate-100">{{ item.text }}</p>
+                <p data-i18n-ignore class="line-clamp-3 break-all text-sm leading-6 text-slate-100">{{ item.text }}</p>
                 </article>
               </div>
               <p v-else class="mt-3 text-sm leading-6 text-[color:var(--muted-text)]">手机发送后会显示在这里。</p>

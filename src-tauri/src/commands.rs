@@ -12,7 +12,6 @@ use crate::{
     history,
     library::{self, LibraryCopyPayload},
     mobile,
-    notifications,
     ocr,
     models::{
         AppConfig, AppStatus, ClipboardContentType, ClipboardTextItem, CopyHistoryResult,
@@ -188,6 +187,8 @@ pub async fn update_config(
     }
     config::save_config(&app, &next_config)?;
     state.set_config(next_config.clone()).await;
+    tray::update_tray_locale(&app, &next_config)?;
+    tray::update_tray_status(&app, state.inner()).await;
     app.emit("config-updated", next_config.clone())?;
     Ok(next_config)
 }
@@ -434,9 +435,19 @@ pub async fn recognize_clipboard_image(app: AppHandle) -> AppResult<OcrResponse>
     let image = clipboard::read_clipboard_image_base64(&app)?
         .ok_or_else(|| AppError::Ocr("剪贴板中没有图片，请先复制或截图。".to_string()))?;
 
-    tauri::async_runtime::spawn_blocking(move || ocr::recognize_image_base64(&image))
-        .await
-        .map_err(|error| AppError::Ocr(format!("图片文字识别失败：{error}")))?
+    #[cfg(target_os = "linux")]
+    let tessdata_dir = Some(
+        app.path()
+            .resolve("tessdata", tauri::path::BaseDirectory::Resource)?,
+    );
+    #[cfg(not(target_os = "linux"))]
+    let tessdata_dir: Option<std::path::PathBuf> = None;
+
+    tauri::async_runtime::spawn_blocking(move || {
+        ocr::recognize_image_base64(&image, tessdata_dir.as_deref())
+    })
+    .await
+    .map_err(|error| AppError::Ocr(format!("图片文字识别失败：{error}")))?
 }
 
 #[tauri::command]
@@ -792,12 +803,6 @@ pub async fn hide_main_window(app: AppHandle) -> AppResult<()> {
     if let Some(window) = app.get_webview_window("main") {
         window.hide()?;
     }
-    Ok(())
-}
-
-#[tauri::command]
-pub async fn send_test_notification(app: AppHandle) -> AppResult<()> {
-    notifications::notify_test(&app);
     Ok(())
 }
 

@@ -33,7 +33,7 @@ function switchFloating(event: MouseEvent) {
     <div class="min-w-0">
       <p class="text-xs text-slate-500">桌面同步控制台</p>
       <p class="truncate text-sm font-medium text-slate-200">
-        {{ statusStore.status.deviceName }} · {{ statusStore.status.localIp || "等待网络地址" }}
+          <span data-i18n-ignore>{{ statusStore.status.deviceName }}</span> · {{ statusStore.status.localIp || "等待网络地址" }}
       </p>
     </div>
     <div class="flex items-center gap-3">

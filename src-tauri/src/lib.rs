@@ -7,6 +7,7 @@ mod discovery;
 mod error;
 mod file_transfer;
 mod history;
+mod i18n;
 mod library;
 mod mobile;
 mod models;
@@ -132,7 +133,6 @@ pub fn run() {
             commands::open_external_url,
             commands::show_main_window,
             commands::hide_main_window,
-            commands::send_test_notification,
             commands::move_floating_window_to_cursor,
             commands::move_main_window_to_center
         ])

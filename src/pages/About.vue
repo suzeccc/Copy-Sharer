@@ -100,7 +100,7 @@ async function checkForUpdate() {
           <p class="text-xs text-[color:var(--muted-text)]">作者</p>
           <p class="mt-1.5 flex items-center gap-2 text-xl font-semibold text-white">
             <UserRound class="h-5 w-5 text-[color:var(--accent-text)]" />
-            {{ AUTHOR_NAME }}
+              <span data-i18n-ignore>{{ AUTHOR_NAME }}</span>
           </p>
         </div>
       </div>
@@ -139,7 +139,7 @@ async function checkForUpdate() {
           <div class="min-w-0 flex-1">
             <p class="truncate text-sm font-semibold text-white">{{ repositoryName }}</p>
             <p class="mt-1 break-all font-mono text-xs text-[color:var(--muted-text)]">
-              {{ GITHUB_REPOSITORY_URL }}
+              <span data-i18n-ignore>{{ GITHUB_REPOSITORY_URL }}</span>
             </p>
           </div>
         </div>

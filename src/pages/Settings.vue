@@ -8,18 +8,24 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue"
 import Button from "@/components/ui/Button.vue";
 import Switch from "@/components/ui/Switch.vue";
 import { clampPort } from "@/lib/format";
+import { setUiLanguage } from "@/i18n";
 import {
   clearCache,
   getCacheSize,
   openTransferFolder,
   resetTransferSaveDir,
   selectTransferSaveDir,
-  sendTestNotification,
 } from "@/lib/tauri";
 import { useConfigStore } from "@/stores/config";
 import { useStatusStore } from "@/stores/status";
 import { useToastStore } from "@/stores/toasts";
-import type { AppConfig, AppTheme, CloseAction, TranslationEngine } from "@/types/config";
+import type {
+  AppConfig,
+  AppTheme,
+  CloseAction,
+  TranslationEngine,
+  UiLanguage,
+} from "@/types/config";
 
 const configStore = useConfigStore();
 const statusStore = useStatusStore();
@@ -46,6 +52,11 @@ const translationEngineOptions: Array<{
   { value: "google", label: "Google 翻译", hint: "免费 · 无需配置", icon: Globe2 },
   { value: "ai", label: "AI 翻译", hint: "使用自有 API", icon: Sparkles },
 ];
+const languageOptions: Array<{ value: UiLanguage; label: string; hint: string }> = [
+  { value: "system", label: "跟随系统", hint: "根据操作系统语言自动选择" },
+  { value: "zh-CN", label: "简体中文", hint: "使用简体中文界面" },
+  { value: "en-US", label: "English", hint: "Use the English interface" },
+];
 const basicSettingsSaving = ref(false);
 const syncContentSaving = ref(false);
 const notificationSettingsSaving = ref(false);
@@ -55,6 +66,7 @@ const cacheSizeLoading = ref(false);
 const cacheClearing = ref(false);
 
 type BasicSettingKey =
+  | "uiLanguage"
   | "deviceName"
   | "port"
   | "theme"
@@ -238,6 +250,18 @@ async function saveTheme(theme: AppTheme) {
   draft.theme = theme;
   applyThemePreview(theme);
   await saveBasicSettings({ theme });
+}
+
+async function saveUiLanguage(uiLanguage: UiLanguage) {
+  if (uiLanguage === configStore.config.uiLanguage) return;
+  const previousLanguage = configStore.config.uiLanguage;
+  draft.uiLanguage = uiLanguage;
+  setUiLanguage(uiLanguage);
+  await saveBasicSettings({ uiLanguage }, { silent: true });
+  if (configStore.error) {
+    draft.uiLanguage = previousLanguage;
+    setUiLanguage(previousLanguage);
+  }
 }
 
 async function saveCloseAction(closeAction: CloseAction) {
@@ -464,15 +488,6 @@ async function saveNotificationClipboardPreview(notificationClipboardPreview: bo
   await saveNotificationSetting({ notificationClipboardPreview });
 }
 
-async function testDesktopNotification() {
-  try {
-    await sendTestNotification();
-    toastStore.success("测试通知已发送");
-  } catch (error) {
-    toastStore.error(`测试通知发送失败：${String(error)}`);
-  }
-}
-
 async function loadCacheSize() {
   if (cacheSizeLoading.value) return;
 
@@ -509,9 +524,33 @@ async function clearLocalCache() {
         data-settings-image2-card
         class="overflow-hidden rounded-[10px] border border-[color:var(--main-line)] bg-[color:var(--panel-bg)]"
       >
+        <div
+          data-ui-language-setting
+          data-settings-image2-row
+          class="flex min-h-[58px] items-start justify-between gap-4 px-3 py-3"
+        >
+          <span class="pt-1 text-[15px] font-bold text-white">界面语言</span>
+          <div data-settings-image2-select class="flex max-w-[620px] flex-wrap justify-end gap-2">
+            <button
+              v-for="option in languageOptions"
+              :key="option.value"
+              type="button"
+              class="h-8 rounded-md border px-3 text-[13px] font-bold transition"
+              :class="draft.uiLanguage === option.value
+                ? 'border-[color:var(--accent-line)] bg-[color:var(--accent-soft)] text-[color:var(--accent-text)]'
+                : 'border-[color:var(--main-line-soft)] bg-[color:var(--main-bg-muted)] text-slate-300 hover:border-[color:var(--main-line)] hover:text-white'"
+              :title="option.hint"
+              :disabled="basicSettingsSaving"
+              @click="saveUiLanguage(option.value)"
+            >
+              {{ option.label }}
+            </button>
+          </div>
+        </div>
+
         <label
           data-settings-image2-row
-          class="flex min-h-[58px] items-center justify-between gap-4 px-3 py-3"
+          class="flex min-h-[58px] items-center justify-between gap-4 border-t border-[color:var(--main-line-soft)] px-3 py-3"
         >
           <span class="grid min-w-0 flex-1 gap-2">
             <span class="text-[15px] font-bold text-white">设备名称</span>
@@ -591,71 +630,6 @@ async function clearLocalCache() {
               {{ option.label }}
             </button>
           </div>
-        </div>
-      </div>
-    </section>
-
-    <section class="grid gap-2">
-      <p class="text-[13px] font-bold text-[color:var(--subtle-text)]">存储</p>
-      <div
-        data-download-location-setting
-        data-settings-image2-card
-        class="overflow-hidden rounded-[10px] border border-[color:var(--main-line)] bg-[color:var(--panel-bg)]"
-      >
-        <div data-settings-image2-row class="flex min-h-[58px] items-center justify-between gap-4 px-3 py-3">
-          <div class="grid min-w-0 flex-1 gap-2">
-            <span class="text-[15px] font-bold text-white">下载位置</span>
-            <span
-              data-settings-image2-field
-              class="h-8 min-w-0 truncate rounded-md bg-[color:var(--field-bg)] px-3 font-mono text-[13px] leading-8 text-slate-300"
-              :title="draft.fileSaveDir || '默认下载目录'"
-            >
-              {{ draft.fileSaveDir || "默认下载目录" }}
-            </span>
-            <span class="text-[13px] text-[color:var(--muted-text)]">接收文件或复制远端文件时保存到这里</span>
-          </div>
-          <div class="flex flex-wrap justify-end gap-2">
-            <Button
-              size="sm"
-              variant="secondary"
-              :disabled="downloadLocationSaving"
-              @click="chooseDownloadLocation"
-            >
-              更改位置
-            </Button>
-            <Button
-              size="sm"
-              variant="secondary"
-              :disabled="downloadLocationSaving"
-              @click="openDownloadLocation"
-            >
-              打开文件夹
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              :disabled="downloadLocationSaving || !draft.fileSaveDir"
-              @click="resetDownloadLocation"
-            >
-              恢复默认
-            </Button>
-          </div>
-        </div>
-        <div
-          data-settings-image2-row
-          class="flex min-h-[50px] items-center justify-between gap-4 border-t border-[color:var(--main-line-soft)] px-3 py-3"
-        >
-          <span class="grid min-w-0 gap-1">
-            <span class="text-[15px] font-bold text-white">文件保存后操作</span>
-            <span class="text-[13px] text-[color:var(--muted-text)]">接收文件保存完成后自动打开文件夹</span>
-          </span>
-          <Switch
-            control-only
-            :model-value="draft.autoOpenFolderAfterSave"
-            label="自动打开文件夹"
-            :disabled="basicSettingsSaving"
-            @update:model-value="saveAutoOpenFolderAfterSave"
-          />
         </div>
       </div>
     </section>
@@ -982,20 +956,6 @@ async function clearLocalCache() {
             @update:model-value="saveNotificationClipboardPreview"
           />
         </div>
-        <div
-          data-settings-image2-row
-          class="flex min-h-[50px] items-center justify-between gap-4 border-t border-[color:var(--main-line-soft)] px-3 py-3"
-        >
-          <span class="text-[15px] font-bold text-white">发送测试通知</span>
-          <Button
-            variant="secondary"
-            size="sm"
-            :disabled="!draft.desktopNotifications"
-            @click="testDesktopNotification"
-          >
-            测试
-          </Button>
-        </div>
       </div>
     </section>
 
@@ -1026,6 +986,72 @@ async function clearLocalCache() {
             label="启动后自动同步"
             :disabled="basicSettingsSaving"
             @update:model-value="saveAutoSync"
+          />
+        </div>
+      </div>
+    </section>
+
+    <section class="grid gap-2">
+      <p class="text-[13px] font-bold text-[color:var(--subtle-text)]">存储</p>
+      <div
+        data-download-location-setting
+        data-settings-image2-card
+        class="overflow-hidden rounded-[10px] border border-[color:var(--main-line)] bg-[color:var(--panel-bg)]"
+      >
+        <div data-settings-image2-row class="flex min-h-[58px] items-center justify-between gap-4 px-3 py-3">
+          <div class="grid min-w-0 flex-1 gap-2">
+            <span class="text-[15px] font-bold text-white">下载位置</span>
+            <span
+              data-settings-image2-field
+              :data-i18n-ignore="draft.fileSaveDir ? '' : undefined"
+              class="h-8 min-w-0 truncate rounded-md bg-[color:var(--field-bg)] px-3 font-mono text-[13px] leading-8 text-slate-300"
+              :title="draft.fileSaveDir || '默认下载目录'"
+            >
+              {{ draft.fileSaveDir || "默认下载目录" }}
+            </span>
+            <span class="text-[13px] text-[color:var(--muted-text)]">接收文件或复制远端文件时保存到这里</span>
+          </div>
+          <div class="flex flex-wrap justify-end gap-2">
+            <Button
+              size="sm"
+              variant="secondary"
+              :disabled="downloadLocationSaving"
+              @click="chooseDownloadLocation"
+            >
+              更改位置
+            </Button>
+            <Button
+              size="sm"
+              variant="secondary"
+              :disabled="downloadLocationSaving"
+              @click="openDownloadLocation"
+            >
+              打开文件夹
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              :disabled="downloadLocationSaving || !draft.fileSaveDir"
+              @click="resetDownloadLocation"
+            >
+              恢复默认
+            </Button>
+          </div>
+        </div>
+        <div
+          data-settings-image2-row
+          class="flex min-h-[50px] items-center justify-between gap-4 border-t border-[color:var(--main-line-soft)] px-3 py-3"
+        >
+          <span class="grid min-w-0 gap-1">
+            <span class="text-[15px] font-bold text-white">文件保存后操作</span>
+            <span class="text-[13px] text-[color:var(--muted-text)]">接收文件保存完成后自动打开文件夹</span>
+          </span>
+          <Switch
+            control-only
+            :model-value="draft.autoOpenFolderAfterSave"
+            label="自动打开文件夹"
+            :disabled="basicSettingsSaving"
+            @update:model-value="saveAutoOpenFolderAfterSave"
           />
         </div>
       </div>

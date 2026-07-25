@@ -10,7 +10,7 @@ use crate::{
 };
 
 const CONFIG_FILE: &str = "config.json";
-const CURRENT_CONFIG_VERSION: u16 = 6;
+const CURRENT_CONFIG_VERSION: u16 = 7;
 
 pub fn load_config(app: &AppHandle) -> AppResult<AppConfig> {
     let path = config_path(app)?;
@@ -60,10 +60,12 @@ fn migrate_config(config: &mut AppConfig) -> bool {
         return false;
     }
 
-    config.sync_image = true;
-    config.sync_files = true;
-    config.notification_clipboard_preview = true;
-    config.notify_device_status = true;
+    if config.config_version < 6 {
+        config.sync_image = true;
+        config.sync_files = true;
+        config.notification_clipboard_preview = true;
+        config.notify_device_status = true;
+    }
     config.config_version = CURRENT_CONFIG_VERSION;
     true
 }
@@ -105,7 +107,8 @@ mod tests {
     fn default_config_matches_mvp_scope() {
         let config = AppConfig::default();
 
-        assert_eq!(config.config_version, 6);
+        assert_eq!(config.config_version, 7);
+        assert_eq!(config.ui_language, crate::models::UiLanguage::System);
         assert_eq!(config.port, 8765);
         assert_eq!(config.theme, crate::models::AppTheme::Win11Dark);
         assert_eq!(config.close_action, crate::models::CloseAction::Ask);
@@ -203,7 +206,7 @@ mod tests {
         let mut config: AppConfig = serde_json::from_value(json).unwrap();
 
         assert!(super::migrate_config(&mut config));
-        assert_eq!(config.config_version, 6);
+        assert_eq!(config.config_version, 7);
         assert!(config.sync_image);
         assert!(config.sync_files);
         assert!(config.notification_clipboard_preview);
@@ -214,7 +217,35 @@ mod tests {
         config.notification_clipboard_preview = false;
         config.notify_device_status = false;
         assert!(!super::migrate_config(&mut config));
-        assert_eq!(config.config_version, 6);
+        assert_eq!(config.config_version, 7);
+        assert!(!config.sync_image);
+        assert!(!config.sync_files);
+        assert!(!config.notification_clipboard_preview);
+        assert!(!config.notify_device_status);
+    }
+
+    #[test]
+    fn version_six_to_seven_preserves_existing_user_settings() {
+        let json = serde_json::json!({
+            "configVersion": 6,
+            "deviceName": "CopyShare",
+            "deviceId": "device-test",
+            "port": 8765,
+            "autoStart": false,
+            "autoSync": true,
+            "saveHistory": true,
+            "trustedDevices": [],
+            "syncText": true,
+            "syncImage": false,
+            "syncFiles": false,
+            "notificationClipboardPreview": false,
+            "notifyDeviceStatus": false
+        });
+        let mut config: AppConfig = serde_json::from_value(json).unwrap();
+
+        assert!(super::migrate_config(&mut config));
+        assert_eq!(config.config_version, 7);
+        assert_eq!(config.ui_language, crate::models::UiLanguage::System);
         assert!(!config.sync_image);
         assert!(!config.sync_files);
         assert!(!config.notification_clipboard_preview);

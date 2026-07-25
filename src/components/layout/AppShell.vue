@@ -303,7 +303,7 @@ async function rejectPromptDevice() {
             class="mt-4 rounded-md border border-[color:var(--main-line-soft)] bg-[color:var(--main-bg-soft)] px-3 py-2.5"
           >
             <p class="truncate text-sm font-semibold text-white">
-              {{ trustPromptDevice.name }}
+                <span data-i18n-ignore>{{ trustPromptDevice.name }}</span>
             </p>
             <p class="mt-1 font-mono text-xs text-slate-400">
               {{ deviceAddress(trustPromptDevice.ip, trustPromptDevice.port) }}

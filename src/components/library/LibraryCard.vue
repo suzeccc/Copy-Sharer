@@ -93,7 +93,7 @@ watch(() => props.item.id, loadThumbnail, { immediate: true });
         <div class="min-w-0">
           <div class="flex min-w-0 items-center gap-2">
             <GripVertical v-if="item.isPinned" class="h-4 w-4 shrink-0 cursor-grab text-slate-500" />
-            <h3 class="truncate text-[14px] font-bold text-white">{{ item.title }}</h3>
+            <h3 data-i18n-ignore class="truncate text-[14px] font-bold text-white">{{ item.title }}</h3>
           </div>
           <p class="mt-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--muted-text)]">
             {{ item.role === "snippet" ? formatTime(item.createdAt) : `${typeLabel} · ${formatTime(item.createdAt)}` }}
@@ -121,20 +121,20 @@ watch(() => props.item.id, loadThumbnail, { immediate: true });
       >
         <div v-for="asset in item.assets" :key="asset.assetId" class="flex min-w-0 items-center gap-2 text-[12px] text-slate-300">
           <Files class="h-3.5 w-3.5 shrink-0 text-slate-500" />
-          <span class="truncate">{{ asset.fileName }}</span>
+          <span data-i18n-ignore class="truncate">{{ asset.fileName }}</span>
         </div>
       </div>
       <p
         v-else
         class="line-clamp-4 whitespace-pre-wrap break-words text-[13px] leading-6 text-slate-200"
       >
-        {{ previewText }}
+        <span data-i18n-ignore>{{ previewText }}</span>
       </p>
 
       <p v-if="unavailable" class="rounded-lg border border-red-500/35 bg-red-500/10 px-3 py-2 text-[12px] text-red-200">
         {{ unavailable }}
       </p>
-      <p v-if="item.note" class="text-[12px] leading-5 text-[color:var(--muted-text)]">{{ item.note }}</p>
+      <p v-if="item.note" data-i18n-ignore class="text-[12px] leading-5 text-[color:var(--muted-text)]">{{ item.note }}</p>
 
       <div v-if="item.tags.length" class="flex flex-wrap gap-1.5">
         <span
@@ -142,7 +142,7 @@ watch(() => props.item.id, loadThumbnail, { immediate: true });
           :key="tag"
           class="rounded-full border border-[color:var(--main-line-soft)] bg-[color:var(--field-bg)] px-2 py-0.5 text-[11px] text-slate-300"
         >
-          {{ tag }}
+          <span data-i18n-ignore>{{ tag }}</span>
         </span>
       </div>
     </div>

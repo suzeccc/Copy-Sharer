@@ -1,9 +1,13 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from "vue";
 import { useRoute } from "vue-router";
+import FolderOpen from "lucide-vue-next/dist/esm/icons/folder-open.js";
 import ImageIcon from "lucide-vue-next/dist/esm/icons/image.js";
 import Minus from "lucide-vue-next/dist/esm/icons/minus.js";
 import PlaySquare from "lucide-vue-next/dist/esm/icons/square-play.js";
+import RotateCcw from "lucide-vue-next/dist/esm/icons/rotate-ccw.js";
+import ZoomIn from "lucide-vue-next/dist/esm/icons/zoom-in.js";
+import ZoomOut from "lucide-vue-next/dist/esm/icons/zoom-out.js";
 import X from "lucide-vue-next/dist/esm/icons/x.js";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 
@@ -50,6 +54,7 @@ let imagePreviewDragOriginOffset: MediaPreviewImagePoint | null = null;
 const isImage = computed(() => previewKind.value === "image");
 const isVideo = computed(() => previewKind.value === "video");
 const subtitle = computed(() => (isImage.value ? "图片预览" : "视频预览"));
+const imagePreviewZoomLabel = computed(() => `${Math.round(imagePreviewScale.value * 100)}%`);
 const imagePreviewTransformStyle = computed(() => ({
   cursor: shouldPanMediaPreviewImage(imagePreviewScale.value)
     ? isImagePreviewPanning.value
@@ -89,6 +94,22 @@ function resetImagePreviewTransform() {
   finishImagePreviewDrag();
   imagePreviewScale.value = MEDIA_PREVIEW_IMAGE_MIN_SCALE;
   imagePreviewOffset.value = { x: 0, y: 0 };
+}
+
+function setImagePreviewScale(nextScale: number) {
+  imagePreviewScale.value = nextScale;
+  if (nextScale === MEDIA_PREVIEW_IMAGE_MIN_SCALE) {
+    imagePreviewOffset.value = { x: 0, y: 0 };
+    finishImagePreviewDrag();
+  }
+}
+
+function zoomImageIn() {
+  setImagePreviewScale(getNextMediaPreviewImageScale(imagePreviewScale.value, -120));
+}
+
+function zoomImageOut() {
+  setImagePreviewScale(getNextMediaPreviewImageScale(imagePreviewScale.value, 120));
 }
 
 function applyMediaPreviewPayload(payload: MediaPreviewPayload) {
@@ -168,13 +189,7 @@ function pointerFromEvent(event: MouseEvent | PointerEvent): MediaPreviewImagePo
 }
 
 function handleImagePreviewWheel(event: WheelEvent) {
-  const nextScale = getNextMediaPreviewImageScale(imagePreviewScale.value, event.deltaY);
-  imagePreviewScale.value = nextScale;
-
-  if (nextScale === MEDIA_PREVIEW_IMAGE_MIN_SCALE) {
-    imagePreviewOffset.value = { x: 0, y: 0 };
-    finishImagePreviewDrag();
-  }
+  setImagePreviewScale(getNextMediaPreviewImageScale(imagePreviewScale.value, event.deltaY));
 }
 
 function handleImagePreviewDragPress(event: PointerEvent) {
@@ -231,9 +246,30 @@ async function revealSourceFile() {
   }
 }
 
+function handlePreviewKeydown(event: KeyboardEvent) {
+  if (event.key === "Escape") {
+    void closeWindow();
+    return;
+  }
+  if (!isImage.value) {
+    return;
+  }
+  if (event.key === "+" || event.key === "=") {
+    event.preventDefault();
+    zoomImageIn();
+  } else if (event.key === "-") {
+    event.preventDefault();
+    zoomImageOut();
+  } else if (event.key === "0") {
+    event.preventDefault();
+    resetImagePreviewTransform();
+  }
+}
+
 onMounted(async () => {
   isUnmounted = false;
   applyMediaPreviewPayload(payloadFromRoute());
+  window.addEventListener("keydown", handlePreviewKeydown);
   void bindMediaPreviewTheme();
   void bindMediaPreviewPayloadUpdates();
 });
@@ -244,6 +280,7 @@ onUnmounted(() => {
   mediaPreviewUnlisten = null;
   themeUnlisten?.();
   themeUnlisten = null;
+  window.removeEventListener("keydown", handlePreviewKeydown);
   finishImagePreviewDrag();
   releaseVideoElement();
 });
@@ -252,27 +289,40 @@ onUnmounted(() => {
 <template>
   <section
     data-media-preview-window
-    class="flex h-screen w-screen flex-col overflow-hidden rounded-xl border border-[color:var(--floating-surface-line)] bg-[color:var(--floating-surface-bg)] text-slate-100 shadow-[0_22px_70px_rgba(0,0,0,0.46)] backdrop-blur-2xl"
+    data-media-preview-transparent-canvas
+    class="relative h-screen w-screen overflow-hidden bg-transparent text-slate-100"
   >
+    <div
+      aria-hidden="true"
+      class="pointer-events-none absolute inset-px rounded-[17px] border border-white/[0.08] bg-black/[0.08] shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_18px_55px_rgba(0,0,0,0.18)] backdrop-blur-[3px]"
+    />
+
     <header
-      class="flex shrink-0 items-center justify-between gap-3 border-b border-[color:var(--main-line-soft)] px-3 py-2"
+      class="absolute inset-x-3 top-3 z-30 flex items-center justify-between gap-3"
       data-window-drag-region
       @mousedown.capture="handleWindowDrag"
     >
-      <div class="flex min-w-0 items-center gap-2" data-window-drag-region>
-        <span class="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-[color:var(--floating-stat-line)] bg-[color:var(--floating-stat-bg)] text-[color:var(--accent-text)]">
+      <div
+        data-media-preview-glass-chrome
+        class="flex min-w-0 items-center gap-2 rounded-xl border border-white/[0.14] bg-[#0c1218]/65 p-1.5 pr-3 shadow-[0_12px_32px_rgba(0,0,0,0.28)] backdrop-blur-2xl"
+        data-window-drag-region
+      >
+        <span class="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-white/[0.10] bg-white/[0.07] text-[color:var(--accent-text)]">
           <ImageIcon v-if="isImage" class="h-4 w-4" />
           <PlaySquare v-else class="h-4 w-4" />
         </span>
         <div class="min-w-0" data-window-drag-region>
-          <p class="truncate text-sm font-semibold text-[color:var(--floating-strong-text)]">{{ title }}</p>
-          <p class="text-[11px] font-medium text-[color:var(--floating-muted-text)]">{{ subtitle }}</p>
+          <p data-i18n-ignore class="max-w-[360px] truncate text-[13px] font-semibold text-white/95">{{ title }}</p>
+          <p class="text-[10px] font-medium tracking-[0.08em] text-white/55">{{ subtitle }}</p>
         </div>
       </div>
-      <div class="flex shrink-0 items-center gap-1.5">
+      <div
+        data-media-preview-glass-chrome
+        class="flex shrink-0 items-center gap-1 rounded-xl border border-white/[0.14] bg-[#0c1218]/65 p-1.5 shadow-[0_12px_32px_rgba(0,0,0,0.28)] backdrop-blur-2xl"
+      >
         <button
           data-media-preview-minimize-button
-          class="grid h-8 w-8 place-items-center rounded-lg border border-[color:var(--floating-control-line)] bg-[color:var(--floating-control-bg)] text-[color:var(--floating-control-text)] transition hover:bg-[color:var(--floating-control-bg-hover)]"
+          class="grid h-8 w-8 place-items-center rounded-lg border border-transparent text-white/75 transition hover:border-white/10 hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent-line)]"
           type="button"
           aria-label="隐藏预览"
           title="隐藏"
@@ -282,7 +332,7 @@ onUnmounted(() => {
           <Minus class="h-4 w-4" />
         </button>
         <button
-          class="grid h-8 w-8 place-items-center rounded-lg border border-[color:var(--floating-control-line)] bg-[color:var(--floating-control-bg)] text-[color:var(--floating-control-text)] transition hover:bg-red-500/75 hover:text-white"
+          class="grid h-8 w-8 place-items-center rounded-lg border border-transparent text-white/75 transition hover:border-red-300/20 hover:bg-red-500/70 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-300/50"
           type="button"
           aria-label="关闭预览"
           title="关闭"
@@ -294,10 +344,10 @@ onUnmounted(() => {
       </div>
     </header>
 
-    <main class="min-h-0 flex-1 overflow-hidden p-3">
+    <main class="absolute inset-0 overflow-hidden px-3 pb-[4.75rem] pt-[4.75rem]">
       <div
         v-if="isImage"
-        class="grid h-full touch-none place-items-center overflow-hidden rounded-xl bg-black/35 p-3"
+        class="relative grid h-full touch-none place-items-center overflow-hidden rounded-2xl border border-white/[0.10] bg-black/[0.08] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)]"
         data-media-preview-image-drag-surface
         @wheel.prevent="handleImagePreviewWheel"
         @pointerdown.left="handleImagePreviewDragPress"
@@ -315,14 +365,14 @@ onUnmounted(() => {
           :max-size="1600"
           variant="preview"
           :alt="title"
-          class="max-h-full max-w-full select-none rounded-lg object-contain will-change-transform"
+          class="!border-white/[0.12] !bg-black/[0.10] shadow-[0_22px_54px_rgba(0,0,0,0.42)] max-h-full max-w-full select-none rounded-xl object-contain will-change-transform"
           :style="imagePreviewTransformStyle"
           draggable="false"
         />
       </div>
 
       <div v-else class="grid h-full grid-rows-[minmax(0,1fr)_auto] gap-3">
-        <div class="overflow-hidden rounded-xl bg-black">
+        <div class="overflow-hidden rounded-2xl border border-white/[0.12] bg-black/45 shadow-[0_22px_54px_rgba(0,0,0,0.42)]">
           <video
             v-if="videoSrc"
             ref="videoRef"
@@ -344,7 +394,7 @@ onUnmounted(() => {
         </div>
         <div
           v-if="videoError"
-          class="flex items-center justify-between gap-3 rounded-lg border border-amber-300/20 bg-amber-400/[0.08] px-3 py-2 text-xs font-medium text-amber-100"
+          class="flex items-center justify-between gap-3 rounded-xl border border-amber-200/20 bg-[#18140b]/70 px-3 py-2 text-xs font-medium text-amber-100 shadow-[0_10px_28px_rgba(0,0,0,0.24)] backdrop-blur-xl"
         >
           <span>{{ videoError }}</span>
           <button
@@ -357,5 +407,64 @@ onUnmounted(() => {
         </div>
       </div>
     </main>
+
+    <div
+      v-if="isImage"
+      data-media-preview-glass-toolbar
+      class="absolute bottom-3 left-1/2 z-30 flex -translate-x-1/2 items-center gap-1 rounded-2xl border border-white/[0.14] bg-[#0c1218]/75 p-1.5 text-white shadow-[0_14px_38px_rgba(0,0,0,0.34)] backdrop-blur-2xl"
+    >
+      <button
+        class="grid h-8 w-8 place-items-center rounded-lg text-white/72 transition hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent-line)] disabled:cursor-default disabled:opacity-35"
+        type="button"
+        aria-label="缩小图片"
+        title="缩小"
+        :disabled="imagePreviewScale === MEDIA_PREVIEW_IMAGE_MIN_SCALE"
+        @click="zoomImageOut"
+      >
+        <ZoomOut class="h-4 w-4" />
+      </button>
+      <span
+        data-media-preview-zoom-label
+        class="min-w-[52px] px-1 text-center font-mono text-[11px] font-semibold tabular-nums text-white/88"
+      >
+        {{ imagePreviewZoomLabel }}
+      </span>
+      <button
+        class="grid h-8 w-8 place-items-center rounded-lg text-white/72 transition hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent-line)]"
+        type="button"
+        aria-label="放大图片"
+        title="放大"
+        @click="zoomImageIn"
+      >
+        <ZoomIn class="h-4 w-4" />
+      </button>
+      <span aria-hidden="true" class="mx-1 h-5 w-px bg-white/[0.12]" />
+      <button
+        class="grid h-8 w-8 place-items-center rounded-lg text-white/72 transition hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent-line)]"
+        type="button"
+        aria-label="重置图片"
+        title="重置缩放"
+        @click="resetImagePreviewTransform"
+      >
+        <RotateCcw class="h-4 w-4" />
+      </button>
+      <button
+        v-if="historyId"
+        class="grid h-8 w-8 place-items-center rounded-lg text-white/72 transition hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent-line)]"
+        type="button"
+        aria-label="打开文件位置"
+        title="打开文件位置"
+        @click="revealSourceFile"
+      >
+        <FolderOpen class="h-4 w-4" />
+      </button>
+    </div>
+
+    <span
+      class="pointer-events-none absolute bottom-4 right-4 z-20 hidden items-center gap-1 rounded-lg border border-white/[0.10] bg-black/40 px-2 py-1 text-[10px] font-medium text-white/55 backdrop-blur-xl sm:flex"
+    >
+      <kbd class="rounded border border-white/10 bg-white/[0.06] px-1 font-mono text-[9px] text-white/70">Esc</kbd>
+      关闭
+    </span>
   </section>
 </template>

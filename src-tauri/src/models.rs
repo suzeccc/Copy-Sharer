@@ -108,6 +108,22 @@ impl Default for CloseAction {
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+pub enum UiLanguage {
+    #[serde(rename = "system")]
+    System,
+    #[serde(rename = "zh-CN")]
+    ZhCn,
+    #[serde(rename = "en-US")]
+    EnUs,
+}
+
+impl Default for UiLanguage {
+    fn default() -> Self {
+        Self::System
+    }
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum TranslationEngine {
     Google,
@@ -147,6 +163,8 @@ fn default_translation_model() -> String {
 pub struct AppConfig {
     #[serde(default)]
     pub config_version: u16,
+    #[serde(default)]
+    pub ui_language: UiLanguage,
     pub device_name: String,
     #[serde(default)]
     pub device_id: String,
@@ -203,7 +221,8 @@ fn default_true() -> bool {
 impl Default for AppConfig {
     fn default() -> Self {
         Self {
-            config_version: 6,
+            config_version: 7,
+            ui_language: UiLanguage::System,
             device_name: "CopyShare".to_string(),
             device_id: new_device_id(),
             theme: AppTheme::Win11Dark,

@@ -30,6 +30,9 @@ assert.match(tauri, /LogicalPosition/);
 assert.match(tauri, /MEDIA_PREVIEW_WINDOW_BOUNDS/);
 assert.match(tauri, /currentMonitor/);
 assert.match(tauri, /getMediaPreviewWindowPosition/);
+assert.match(tauri, /transparent:\s*true/);
+assert.match(tauri, /backgroundColor:\s*TRANSPARENT_WINDOW_BACKGROUND/);
+assert.match(tauri, /shadow:\s*false/);
 
 assert.match(router, /MediaPreview/);
 assert.match(router, /path:\s*"\/media-preview"/);
@@ -59,6 +62,14 @@ assert.match(mediaPreview, /handleImagePreviewDragMove/);
 assert.match(mediaPreview, /finishImagePreviewDrag/);
 assert.doesNotMatch(mediaPreview, /window\.setTimeout/);
 assert.match(mediaPreview, /data-media-preview-window/);
+assert.match(mediaPreview, /data-media-preview-transparent-canvas/);
+assert.match(mediaPreview, /data-media-preview-glass-chrome/);
+assert.match(mediaPreview, /data-media-preview-glass-toolbar/);
+assert.match(mediaPreview, /class="relative h-screen w-screen overflow-hidden bg-transparent/);
+assert.doesNotMatch(
+  mediaPreview,
+  /data-media-preview-window[\s\S]{0,240}bg-\[color:var\(--floating-surface-bg\)\]/,
+);
 assert.match(mediaPreview, /data-media-preview-minimize-button/);
 assert.match(mediaPreview, /@click="minimizeWindow"/);
 assert.match(mediaPreview, /data-media-preview-image/);
@@ -71,6 +82,12 @@ assert.match(mediaPreview, /@pointerup="finishImagePreviewDrag"/);
 assert.match(mediaPreview, /@pointercancel="finishImagePreviewDrag"/);
 assert.match(mediaPreview, /setPointerCapture\(event\.pointerId\)/);
 assert.match(mediaPreview, /releasePointerCapture\(event\.pointerId\)/);
+assert.match(mediaPreview, /imagePreviewZoomLabel/);
+assert.match(mediaPreview, /@click="zoomImageOut"/);
+assert.match(mediaPreview, /@click="zoomImageIn"/);
+assert.match(mediaPreview, /@click="resetImagePreviewTransform"/);
+assert.match(mediaPreview, /window\.addEventListener\("keydown", handlePreviewKeydown\)/);
+assert.match(mediaPreview, /window\.removeEventListener\("keydown", handlePreviewKeydown\)/);
 assert.match(mediaPreview, /@error="handleVideoPreviewError"/);
 
 assert.match(floatingPanel, /openMediaPreviewWindow/);

@@ -1,4 +1,4 @@
-use std::io::Cursor;
+use std::{io::Cursor, path::Path};
 
 use base64::{engine::general_purpose::STANDARD, Engine as _};
 use image::{DynamicImage, GenericImageView, ImageFormat};
@@ -119,9 +119,14 @@ where
     }
 }
 
-pub fn recognize_image_base64(content: &str) -> AppResult<OcrResponse> {
+pub fn recognize_image_base64(
+    content: &str,
+    tessdata_dir: Option<&Path>,
+) -> AppResult<OcrResponse> {
     let prepared = prepare_image(content).map_err(AppError::Ocr)?;
-    Ok(response_from_engine(prepared, platform::recognize_png))
+    Ok(response_from_engine(prepared, |png| {
+        platform::recognize_png(png, tessdata_dir)
+    }))
 }
 
 #[cfg(target_os = "windows")]
@@ -154,7 +159,10 @@ mod platform {
         }
     }
 
-    pub fn recognize_png(png: &[u8]) -> Result<String, String> {
+    pub fn recognize_png(
+        png: &[u8],
+        _tessdata_dir: Option<&std::path::Path>,
+    ) -> Result<String, String> {
         let _apartment = ComApartment::initialize()?;
         let stream = InMemoryRandomAccessStream::new().map_err(ocr_error)?;
         let writer = DataWriter::CreateDataWriter(&stream).map_err(ocr_error)?;
@@ -190,10 +198,92 @@ mod platform {
     }
 }
 
-#[cfg(not(target_os = "windows"))]
+#[cfg(target_os = "macos")]
 mod platform {
-    pub fn recognize_png(_png: &[u8]) -> Result<String, String> {
-        Err("图片转文字目前仅支持 Windows。".to_string())
+    use objc2::rc::autoreleasepool;
+    use objc2::AnyThread;
+    use objc2_foundation::{NSArray, NSData, NSDictionary, NSString};
+    use objc2_vision::{
+        VNImageRequestHandler, VNRecognizeTextRequest, VNRequestTextRecognitionLevel,
+    };
+
+    fn ocr_error(error: impl std::fmt::Display) -> String {
+        format!("图片文字识别失败：{error}")
+    }
+
+    pub fn recognize_png(
+        png: &[u8],
+        _tessdata_dir: Option<&std::path::Path>,
+    ) -> Result<String, String> {
+        autoreleasepool(|_| recognize_png_inner(png))
+    }
+
+    fn recognize_png_inner(png: &[u8]) -> Result<String, String> {
+        let image_data = NSData::from_vec(png.to_vec());
+        let options = NSDictionary::new();
+        let handler = VNImageRequestHandler::initWithData_options(
+            VNImageRequestHandler::alloc(),
+            &image_data,
+            &options,
+        );
+        let request = VNRecognizeTextRequest::new();
+        request.setRecognitionLevel(VNRequestTextRecognitionLevel::Accurate);
+        request.setUsesLanguageCorrection(true);
+
+        let languages = NSArray::from_retained_slice(&[
+            NSString::from_str("zh-Hans"),
+            NSString::from_str("en-US"),
+        ]);
+        request.setRecognitionLanguages(&languages);
+
+        let base_request = request.clone().into_super().into_super();
+        let requests = NSArray::from_retained_slice(&[base_request]);
+        handler
+            .performRequests_error(&requests)
+            .map_err(ocr_error)?;
+
+        let observations = request
+            .results()
+            .ok_or_else(|| "Apple Vision 未返回识别结果。".to_string())?;
+        let mut lines = Vec::with_capacity(observations.len());
+        for observation in observations.to_vec() {
+            if let Some(candidate) = observation.topCandidates(1).to_vec().into_iter().next() {
+                lines.push(candidate.string().to_string());
+            }
+        }
+        Ok(lines.join("\n"))
+    }
+}
+
+#[cfg(target_os = "linux")]
+mod platform {
+    use leptess::LepTess;
+
+    fn ocr_error(error: impl std::fmt::Display) -> String {
+        format!("图片文字识别失败：{error}")
+    }
+
+    pub fn recognize_png(
+        png: &[u8],
+        tessdata_dir: Option<&std::path::Path>,
+    ) -> Result<String, String> {
+        let tessdata_dir = tessdata_dir.ok_or_else(|| "未找到 Linux OCR 语言模型。".to_string())?;
+        let tessdata_dir = tessdata_dir
+            .to_str()
+            .ok_or_else(|| "Linux OCR 语言模型路径不是有效 UTF-8。".to_string())?;
+        let mut engine = LepTess::new(Some(tessdata_dir), "chi_sim+eng").map_err(ocr_error)?;
+        engine.set_image_from_mem(png).map_err(ocr_error)?;
+        engine.get_utf8_text().map_err(ocr_error)
+    }
+}
+
+#[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "linux")))]
+mod platform {
+    pub fn recognize_png(
+        _png: &[u8],
+        _tessdata_dir: Option<&std::path::Path>,
+    ) -> Result<String, String> {
+        Err("当前平台不支持图片转文字。".to_string())
     }
 }
 

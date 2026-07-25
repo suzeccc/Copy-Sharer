@@ -132,7 +132,7 @@ const showCancelAwaitingTrustButton = computed(() =>
   >
     <div class="flex items-start justify-between gap-4">
       <div class="min-w-0">
-        <h3 class="truncate text-sm font-semibold text-white">{{ device.name }}</h3>
+        <h3 data-i18n-ignore class="truncate text-sm font-semibold text-white">{{ device.name }}</h3>
         <p class="mt-1 font-mono text-xs text-slate-400">
           {{ deviceAddress(device.ip, device.port) }}
         </p>

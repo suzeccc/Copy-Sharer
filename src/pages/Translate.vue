@@ -164,7 +164,7 @@ async function copyResult() {
         data-translate-result
         class="min-h-[120px] whitespace-pre-wrap rounded-lg border border-[color:var(--main-line-soft)] bg-[color:var(--field-bg)] px-3 py-3 text-[13px] leading-6 text-slate-100"
       >
-        <span v-if="result?.targetText">{{ result.targetText }}</span>
+          <span v-if="result?.targetText" data-i18n-ignore>{{ result.targetText }}</span>
         <span v-else class="text-[color:var(--muted-text)]">翻译结果会显示在这里</span>
       </div>
     </Card>

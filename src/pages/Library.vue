@@ -345,7 +345,7 @@ onUnmounted(() => libraryStore.disposeSubscription());
             : 'border-[color:var(--main-line-soft)] bg-[color:var(--field-bg)] text-slate-400 hover:text-white'"
           @click="toggleTag(tag)"
         >
-          {{ tag }}
+          <span data-i18n-ignore>{{ tag }}</span>
         </button>
       </div>
     </Card>

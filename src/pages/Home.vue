@@ -143,7 +143,7 @@ const syncContentItems = computed(() => [
             <Monitor class="mt-0.5 h-5 w-5 text-[color:var(--accent-text)]" />
             <div class="flex min-w-0 flex-1 flex-wrap items-center justify-between gap-3">
               <div class="min-w-0">
-                <p class="truncate text-sm font-medium text-white">{{ statusStore.status.deviceName }}</p>
+          <p data-i18n-ignore class="truncate text-sm font-medium text-white">{{ statusStore.status.deviceName }}</p>
               </div>
               <span class="rounded-md border border-[color:var(--main-line-soft)] bg-[color:var(--stat-bg)] px-3 py-1 text-sm font-semibold text-slate-200">
                 {{ statusStore.status.running ? "运行中" : "等待启动" }}

@@ -9,6 +9,7 @@ use tauri::{AppHandle, Manager};
 
 use crate::{
     config as app_config,
+    i18n,
     models::{
         AppConfig, ClipboardContentType, ClipboardMessage, DeviceInfo, FileTransferDirection,
         FileTransferTask,
@@ -54,6 +55,10 @@ pub fn notify_clipboard_received(
     config: &AppConfig,
     message: &ClipboardMessage,
 ) {
+    let protected = vec![
+        source_display_name(&message.source_device_name),
+        compact_preview(&message.content, 60),
+    ];
     notify_if_enabled(
         app,
         config,
@@ -62,6 +67,7 @@ pub fn notify_clipboard_received(
         Duration::from_secs(10),
         "收到剪贴板内容",
         &clipboard_notification_body(config, message),
+        &protected,
         HOME_ROUTE,
     );
 }
@@ -71,6 +77,7 @@ pub fn notify_mobile_clipboard_received(
     config: &AppConfig,
     message: &ClipboardMessage,
 ) {
+    let protected = vec![compact_preview(&message.content, 60)];
     notify_if_enabled(
         app,
         config,
@@ -79,11 +86,13 @@ pub fn notify_mobile_clipboard_received(
         Duration::from_secs(10),
         "手机内容已写入剪贴板",
         &mobile_clipboard_notification_body(config, message),
+        &protected,
         MOBILE_ROUTE,
     );
 }
 
 pub fn notify_trust_required(app: &AppHandle, config: &AppConfig, device: &DeviceInfo) {
+    let display_name = device_display_name(device);
     notify_if_enabled(
         app,
         config,
@@ -91,13 +100,15 @@ pub fn notify_trust_required(app: &AppHandle, config: &AppConfig, device: &Devic
         &format!("trust-required:{}", device.id),
         Duration::from_secs(60 * 10),
         "设备请求信任",
-        &format!("{} 等待确认信任", device_display_name(device)),
+        &format!("{display_name} 等待确认信任"),
+        &[display_name],
         DEVICES_ROUTE,
     );
 }
 
 pub fn notify_file_transfer_offer(app: &AppHandle, task: &FileTransferTask) {
     let config = load_notification_config(app);
+    let summary = file_summary(task);
     notify_if_enabled(
         app,
         &config,
@@ -105,13 +116,15 @@ pub fn notify_file_transfer_offer(app: &AppHandle, task: &FileTransferTask) {
         &format!("file-offer:{}", task.transfer_id),
         Duration::from_secs(60 * 10),
         "收到文件传输请求",
-        &format!("来自 {}：{}", task.peer_device_name, file_summary(task)),
+        &format!("来自 {}：{summary}", task.peer_device_name),
+        &[task.peer_device_name.clone(), summary],
         FILES_ROUTE,
     );
 }
 
 pub fn notify_device_discovered(app: &AppHandle, device: &DeviceInfo) {
     let config = load_notification_config(app);
+    let display_name = device_display_name(device);
     notify_if_enabled(
         app,
         &config,
@@ -119,13 +132,15 @@ pub fn notify_device_discovered(app: &AppHandle, device: &DeviceInfo) {
         &format!("device-discovered:{}", device.id),
         Duration::from_secs(60 * 10),
         "发现局域网设备",
-        &format!("{} 等待连接", device_display_name(device)),
+        &format!("{display_name} 等待连接"),
+        &[display_name],
         DEVICES_ROUTE,
     );
 }
 
 pub fn notify_device_offline(app: &AppHandle, device: &DeviceInfo) {
     let config = load_notification_config(app);
+    let display_name = device_display_name(device);
     notify_if_enabled(
         app,
         &config,
@@ -133,13 +148,15 @@ pub fn notify_device_offline(app: &AppHandle, device: &DeviceInfo) {
         &format!("device-offline:{}", device.id),
         Duration::from_secs(30),
         "设备已离线",
-        &format!("{} 已离线", device_display_name(device)),
+        &format!("{display_name} 已离线"),
+        &[display_name],
         DEVICES_ROUTE,
     );
 }
 
 pub fn notify_file_transfer_completed(app: &AppHandle, task: &FileTransferTask) {
     let config = load_notification_config(app);
+    let summary = file_summary(task);
     let verb = match task.direction {
         FileTransferDirection::Send => "发送完成",
         FileTransferDirection::Receive => "接收完成",
@@ -151,7 +168,8 @@ pub fn notify_file_transfer_completed(app: &AppHandle, task: &FileTransferTask) 
         &format!("file-completed:{}", task.transfer_id),
         Duration::from_secs(60 * 60),
         "文件传输完成",
-        &format!("{verb}: {}", file_summary(task)),
+        &format!("{verb}: {summary}"),
+        &[summary],
         FILES_ROUTE,
     );
 }
@@ -159,6 +177,7 @@ pub fn notify_file_transfer_completed(app: &AppHandle, task: &FileTransferTask) 
 pub fn notify_file_transfer_failed(app: &AppHandle, task: &FileTransferTask) {
     let config = load_notification_config(app);
     let reason = task.error.as_deref().unwrap_or("传输失败");
+    let summary = file_summary(task);
     notify_if_enabled(
         app,
         &config,
@@ -166,7 +185,8 @@ pub fn notify_file_transfer_failed(app: &AppHandle, task: &FileTransferTask) {
         &format!("file-failed:{}:{reason}", task.transfer_id),
         Duration::from_secs(60 * 60),
         "文件传输失败",
-        &format!("{}: {reason}", file_summary(task)),
+        &format!("{summary}: {reason}"),
+        &[summary],
         FILES_ROUTE,
     );
 }
@@ -180,15 +200,7 @@ pub fn notify_sync_error(app: &AppHandle, config: &AppConfig, message: &str) {
         Duration::from_secs(30),
         "CopyShare 同步异常",
         message,
-        SETTINGS_ROUTE,
-    );
-}
-
-pub fn notify_test(app: &AppHandle) {
-    notify(
-        app,
-        "CopyShare 测试通知",
-        "如果你看到这条消息，桌面右下角通知已生效。",
+        &[],
         SETTINGS_ROUTE,
     );
 }
@@ -201,6 +213,7 @@ fn notify_if_enabled(
     cooldown: Duration,
     title: &str,
     body: &str,
+    protected_body_parts: &[String],
     route: &'static str,
 ) {
     if !config.desktop_notifications || !category_enabled {
@@ -210,7 +223,8 @@ fn notify_if_enabled(
         return;
     }
 
-    notify(app, title, body, route);
+    let localized_body = i18n::translate_with_protected(config, body, protected_body_parts);
+    notify(app, config, title, &localized_body, route);
 }
 
 fn clipboard_notification_cooldown_key(_message: &ClipboardMessage) -> &'static str {
@@ -241,13 +255,19 @@ fn load_notification_config(app: &AppHandle) -> AppConfig {
     app_config::load_config(app).unwrap_or_default()
 }
 
-fn notify(app: &AppHandle, title: &str, body: &str, route: &'static str) {
+fn notify(
+    app: &AppHandle,
+    config: &AppConfig,
+    title: &str,
+    body: &str,
+    route: &'static str,
+) {
     let _ = (NAVIGATE_EVENT, route);
 
     let _ = app
         .notification()
         .builder()
-        .title(title)
+        .title(i18n::translate(config, title))
         .body(body)
         .show();
 }

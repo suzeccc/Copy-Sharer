@@ -1,0 +1,19 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "bundle": {
+    "resources": {
+      "resources/tessdata/": "tessdata/"
+    },
+    "linux": {
+      "deb": {
+        "depends": [
+          "libwebkit2gtk-4.1-0",
+          "libgtk-3-0",
+          "libappindicator3-1 | libayatana-appindicator3-1",
+          "libtesseract5",
+          "liblept5"
+        ]
+      }
+    }
+  }
+}

@@ -33,7 +33,7 @@ const displaySummary = computed(() =>
           <p class="text-sm font-medium text-white">
             {{ item.direction === "local" ? "本机复制" : "远端写入" }}
           </p>
-          <span class="rounded-md bg-[color:var(--field-bg)] px-2 py-0.5 text-xs text-slate-400">
+          <span data-i18n-ignore class="rounded-md bg-[color:var(--field-bg)] px-2 py-0.5 text-xs text-slate-400">
             {{ item.sourceDevice }}
           </span>
         </div>
@@ -46,7 +46,7 @@ const displaySummary = computed(() =>
           label="复制内容"
         />
       </div>
-      <p class="mt-2 break-words text-sm text-slate-300">{{ displaySummary }}</p>
+      <p data-i18n-ignore class="mt-2 break-words text-sm text-slate-300">{{ displaySummary }}</p>
       <p class="mt-2 text-xs text-slate-500">{{ formatTime(item.createdAt) }}</p>
     </div>
   </article>

@@ -213,6 +213,7 @@ onUnmounted(() => {
           <div data-floating-clipboard-history-content class="min-w-0 overflow-hidden">
             <button
               v-if="getClipboardLinkUrl(item.text)"
+              data-i18n-ignore
               data-floating-clipboard-link-button
               class="floating-link-chip block w-full min-w-0 overflow-hidden line-clamp-2 break-all text-left text-xs font-semibold leading-5 text-[color:var(--floating-strong-text)] underline-offset-2 hover:text-[color:var(--accent-text)] hover:underline"
               type="button"
@@ -222,6 +223,7 @@ onUnmounted(() => {
             </button>
             <div
               v-else-if="item.contentType === 'image'"
+              data-i18n-ignore
               data-floating-clipboard-image-summary
               class="flex min-w-0 items-baseline gap-2 text-xs font-semibold leading-5 text-[color:var(--floating-strong-text)]"
             >
@@ -232,6 +234,7 @@ onUnmounted(() => {
             </div>
             <div
               v-else-if="item.contentType === 'fileList'"
+              data-i18n-ignore
               data-floating-clipboard-file-summary
               class="flex min-w-0 items-baseline gap-2 text-xs font-semibold leading-5 text-[color:var(--floating-strong-text)]"
             >
@@ -240,11 +243,12 @@ onUnmounted(() => {
                 {{ clipboardFileSize(item) }}
               </span>
             </div>
-            <p v-else data-floating-clipboard-history-text class="line-clamp-2 break-all text-xs font-semibold leading-5 text-[color:var(--floating-strong-text)]">
+            <p v-else data-floating-clipboard-history-text data-i18n-ignore class="line-clamp-2 break-all text-xs font-semibold leading-5 text-[color:var(--floating-strong-text)]">
               {{ item.text }}
             </p>
             <p
               v-if="item.sourceDevice"
+              data-i18n-ignore
               class="mt-1 truncate text-[10px] font-medium text-[color:var(--floating-muted-text)]"
             >
               {{ item.sourceDevice }}
@@ -301,7 +305,7 @@ onUnmounted(() => {
             <X class="h-3.5 w-3.5" />
           </button>
         </div>
-        <pre class="min-h-0 flex-1 overflow-auto whitespace-pre-wrap break-all rounded-lg bg-black/30 p-3 text-xs leading-5 text-[color:var(--floating-strong-text)]">{{ selectedClipboardItem.text }}</pre>
+        <pre data-i18n-ignore class="min-h-0 flex-1 overflow-auto whitespace-pre-wrap break-all rounded-lg bg-black/30 p-3 text-xs leading-5 text-[color:var(--floating-strong-text)]">{{ selectedClipboardItem.text }}</pre>
         <div class="mt-2 flex justify-end">
           <CopyTextButton
             :text="selectedClipboardItem.text"

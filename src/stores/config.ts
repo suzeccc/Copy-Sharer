@@ -4,7 +4,8 @@ import { getConfig, onAppEvent, updateConfig } from "@/lib/tauri";
 import type { AppConfig } from "@/types/config";
 
 const defaultConfig: AppConfig = {
-  configVersion: 6,
+  configVersion: 7,
+  uiLanguage: "system",
   deviceName: "CopyShare",
   deviceId: "",
   theme: "win11Dark",

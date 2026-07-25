@@ -339,6 +339,7 @@ function openFullClipboardItem(item: ClipboardPreviewItem) {
           <div
             v-if="item.contentType === 'image'"
             data-floating-clipboard-content
+            data-i18n-ignore
             data-floating-clipboard-image-summary
             class="flex min-w-0 flex-1 select-none items-baseline gap-2.5 overflow-hidden text-xs font-semibold leading-4 text-[color:var(--floating-strong-text)]"
           >
@@ -353,6 +354,7 @@ function openFullClipboardItem(item: ClipboardPreviewItem) {
           <div
             v-else-if="item.contentType === 'fileList'"
             data-floating-clipboard-content
+            data-i18n-ignore
             data-floating-clipboard-file-summary
             class="flex min-w-0 flex-1 select-none items-center gap-2.5 overflow-hidden text-xs font-semibold leading-4 text-[color:var(--floating-strong-text)]"
           >
@@ -391,6 +393,7 @@ function openFullClipboardItem(item: ClipboardPreviewItem) {
           <button
             v-else-if="getClipboardLinkUrl(item.text)"
             data-floating-clipboard-content
+            data-i18n-ignore
             data-floating-clipboard-link-button
             class="floating-link-chip block min-w-0 flex-1 cursor-pointer select-none overflow-hidden text-ellipsis whitespace-nowrap text-left text-xs font-semibold leading-4 text-[color:var(--floating-strong-text)] underline-offset-2 transition-colors duration-150 hover:text-[color:var(--accent-text)] hover:underline"
             type="button"
@@ -401,6 +404,7 @@ function openFullClipboardItem(item: ClipboardPreviewItem) {
           <p
             v-else
             data-floating-clipboard-content
+            data-i18n-ignore
             data-floating-clipboard-text
             class="line-clamp-1 min-w-0 flex-1 overflow-hidden break-words text-xs font-semibold leading-4 text-[color:var(--floating-strong-text)]"
           >
@@ -457,7 +461,7 @@ function openFullClipboardItem(item: ClipboardPreviewItem) {
             <X class="h-3.5 w-3.5" />
           </button>
         </div>
-        <pre class="min-h-0 flex-1 overflow-auto whitespace-pre-wrap break-all rounded-lg bg-black/30 p-3 text-xs leading-5 text-[color:var(--floating-strong-text)]">{{ selectedClipboardItem.text }}</pre>
+        <pre data-i18n-ignore class="min-h-0 flex-1 overflow-auto whitespace-pre-wrap break-all rounded-lg bg-black/30 p-3 text-xs leading-5 text-[color:var(--floating-strong-text)]">{{ selectedClipboardItem.text }}</pre>
         <div class="mt-2 flex justify-end">
           <CopyTextButton
             :text="selectedClipboardItem.text"

@@ -17,4 +17,5 @@ test("release workflow keeps both macOS builds and Linux", () => {
   assert.match(workflow, /label: macOS Apple Silicon/);
   assert.match(workflow, /label: macOS Intel/);
   assert.match(workflow, /label: Linux/);
+  assert.match(workflow, /clang[\s\S]*?libleptonica-dev[\s\S]*?libtesseract-dev/);
 });

@@ -13,6 +13,7 @@ import {
   MAIN_WINDOW_BOUNDS,
   TRANSPARENT_WINDOW_BACKGROUND,
 } from "./windowMode.ts";
+import { translateSource } from "../i18n/index.ts";
 import type { ClipboardPreviewItem } from "@/lib/historyPreview";
 import { getMediaPreviewWindowPosition } from "./mediaPreviewWindow.ts";
 import type { AppConfig } from "@/types/config";
@@ -372,7 +373,7 @@ export async function openMediaPreviewWindow(payload: MediaPreviewPayload): Prom
   const position = await mediaPreviewInitialPosition();
   new WebviewWindow(MEDIA_PREVIEW_WINDOW_LABEL, {
     url: mediaPreviewUrl(payload),
-    title: "媒体预览",
+    title: translateSource("媒体预览"),
     width: MEDIA_PREVIEW_WINDOW_BOUNDS.width,
     height: MEDIA_PREVIEW_WINDOW_BOUNDS.height,
     minWidth: 420,
@@ -417,7 +418,7 @@ export async function openFloatingClipboardHistoryWindow(payload: FloatingClipbo
   const position = await nearbyFloatingWindowInitialPosition(FLOATING_CLIPBOARD_WINDOW_BOUNDS);
   new WebviewWindow(FLOATING_CLIPBOARD_WINDOW_LABEL, {
     url: "/#/floating-clipboard",
-    title: "剪贴板内容",
+    title: translateSource("剪贴板内容"),
     width: FLOATING_CLIPBOARD_WINDOW_BOUNDS.width,
     height: FLOATING_CLIPBOARD_WINDOW_BOUNDS.height,
     minWidth: 360,
@@ -449,10 +450,6 @@ export function showMainWindow(): Promise<void> {
 
 export function hideMainWindow(): Promise<void> {
   return invoke<void>("hide_main_window");
-}
-
-export function sendTestNotification(): Promise<void> {
-  return invoke<void>("send_test_notification");
 }
 
 export function moveFloatingWindowToCursor(): Promise<void> {

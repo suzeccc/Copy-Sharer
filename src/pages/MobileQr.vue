@@ -264,7 +264,7 @@ function errorMessage(error: unknown, fallback: string) {
                   class="rounded-2xl border border-[color:var(--main-line-soft)] bg-black/15 p-3"
                 >
                   <p class="mb-2 text-[11px] font-medium text-[color:var(--subtle-text)]">电脑剪贴板 {{ index + 1 }}</p>
-                  <p class="line-clamp-4 select-text break-all text-sm leading-6 text-slate-100">{{ item.text }}</p>
+          <p data-i18n-ignore class="line-clamp-4 select-text break-all text-sm leading-6 text-slate-100">{{ item.text }}</p>
                 </article>
               </div>
               <p v-else class="mt-3 min-h-[7.5rem] text-sm leading-6 text-[color:var(--muted-text)]">
@@ -289,7 +289,7 @@ function errorMessage(error: unknown, fallback: string) {
                   class="rounded-2xl border border-emerald-300/15 bg-emerald-400/[0.06] p-3"
                 >
                   <p class="mb-2 text-[11px] font-medium text-emerald-200/80">手机提交 {{ index + 1 }}</p>
-                  <p class="line-clamp-4 select-text break-all text-sm leading-6 text-slate-100">{{ item.text }}</p>
+          <p data-i18n-ignore class="line-clamp-4 select-text break-all text-sm leading-6 text-slate-100">{{ item.text }}</p>
                 </article>
               </div>
               <p v-else class="mt-3 min-h-[7.5rem] text-sm leading-6 text-[color:var(--muted-text)]">

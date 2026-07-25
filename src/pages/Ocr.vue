@@ -110,7 +110,7 @@ function clearSession() {
             <ImageIcon class="h-6 w-6" />
           </div>
           <div>
-            <p class="font-semibold text-white">点击此处后按 Ctrl+V 粘贴图片</p>
+            <p class="font-semibold text-white">点击此处后按 Ctrl+V / Cmd+V 粘贴图片</p>
             <p class="mt-1 text-[12px] text-[color:var(--muted-text)]">支持截图、位图和复制的图片文件</p>
           </div>
         </div>

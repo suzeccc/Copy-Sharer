@@ -69,6 +69,7 @@ docs/superpowers/
 # Local design and agent artifacts
 /previews/
 /.planning/
+/.codex-release.json
 
 # Frontend caches and reports
 /coverage/

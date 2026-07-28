@@ -33,6 +33,7 @@ import {
   openHistoryFileLocation,
   openMediaPreviewWindow,
   openTransferFolder,
+  resumeFileTransfer,
   startWindowDrag,
 } from "@/lib/tauri";
 import { startWindowDragFromMouseEvent } from "@/lib/windowDrag";
@@ -116,6 +117,22 @@ async function handleClipboardItemClick(item: ClipboardPreviewItem) {
     return;
   }
 
+  if (action === "resume") {
+    if (!item.fileTransferId) {
+      return;
+    }
+    try {
+      const task = await resumeFileTransfer(item.fileTransferId);
+      historyStore.updateFileDownloadTask(task);
+      toastStore.success(
+        task.status === "waitingForPeer" ? "已继续等待发送设备上线" : "正在继续下载",
+      );
+    } catch (error) {
+      toastStore.error(`继续下载失败：${String(error)}`);
+    }
+    return;
+  }
+
   if (action === "download") {
     historyStore.beginFileDownload(item.fileTransferId);
   }
@@ -167,7 +184,7 @@ async function openFloatingVideoPreview(item: ClipboardPreviewItem) {
       item,
       historyStore.fileDownloadActivity(item.fileTransferId),
     );
-    if (action === "download") {
+    if (action === "download" || action === "resume") {
       await handleClipboardItemClick(item);
       return;
     }
@@ -343,7 +360,12 @@ function openFullClipboardItem(item: ClipboardPreviewItem) {
             data-floating-clipboard-image-summary
             class="flex min-w-0 flex-1 select-none items-baseline gap-2.5 overflow-hidden text-xs font-semibold leading-4 text-[color:var(--floating-strong-text)]"
           >
-            <span class="min-w-0 truncate">{{ clipboardFileSummary(item).name }}</span>
+            <span
+              data-floating-clipboard-image-name
+              class="floating-file-name min-w-0 truncate"
+            >
+              {{ clipboardFileSummary(item).name }}
+            </span>
             <span
               v-if="clipboardFileSummary(item).size"
               class="shrink-0 text-[10px] font-medium text-[color:var(--floating-muted-text)]"
@@ -381,7 +403,12 @@ function openFullClipboardItem(item: ClipboardPreviewItem) {
               compact
             />
             <div class="flex min-w-0 flex-1 items-baseline gap-2.5 overflow-hidden">
-              <span class="min-w-0 truncate">{{ clipboardFileSummary(item).name }}</span>
+              <span
+                data-floating-clipboard-file-name
+                class="floating-file-name min-w-0 truncate"
+              >
+                {{ clipboardFileSummary(item).name }}
+              </span>
               <span
                 v-if="clipboardFileSummary(item).size"
                 class="shrink-0 text-[10px] font-medium text-[color:var(--floating-muted-text)]"

@@ -3,6 +3,8 @@ import CircleAlert from "lucide-vue-next/dist/esm/icons/circle-alert.js";
 import CircleCheck from "lucide-vue-next/dist/esm/icons/circle-check.js";
 import Download from "lucide-vue-next/dist/esm/icons/download.js";
 import LoaderCircle from "lucide-vue-next/dist/esm/icons/loader-circle.js";
+import PauseCircle from "lucide-vue-next/dist/esm/icons/circle-pause.js";
+import WifiOff from "lucide-vue-next/dist/esm/icons/wifi-off.js";
 import { computed } from "vue";
 
 import { getClipboardFileDownloadFeedback } from "@/lib/clipboardFileDownload";
@@ -31,8 +33,12 @@ const feedback = computed(() =>
 const feedbackClass = computed(() => {
   switch (feedback.value?.state) {
     case "downloading":
+    case "retrying":
     case "completed":
       return "border-[color:var(--accent-line)] bg-[color:var(--accent-soft)] text-[color:var(--accent-text)]";
+    case "waiting":
+    case "paused":
+      return "border-amber-300/25 bg-amber-400/10 text-amber-100";
     case "failed":
       return "border-red-400/25 bg-red-400/10 text-red-200";
     default:
@@ -59,7 +65,12 @@ const progressStyle = computed(() => ({
       ]"
       :title="feedback.label"
     >
-      <LoaderCircle v-if="feedback.state === 'downloading'" class="h-3 w-3 animate-spin" />
+      <LoaderCircle
+        v-if="feedback.state === 'downloading' || feedback.state === 'retrying'"
+        class="h-3 w-3 animate-spin"
+      />
+      <WifiOff v-else-if="feedback.state === 'waiting'" class="h-3 w-3" />
+      <PauseCircle v-else-if="feedback.state === 'paused'" class="h-3 w-3" />
       <CircleCheck v-else-if="feedback.state === 'completed'" class="h-3 w-3" />
       <CircleAlert v-else-if="feedback.state === 'failed'" class="h-3 w-3" />
       <Download v-else class="h-3 w-3" />
@@ -67,7 +78,7 @@ const progressStyle = computed(() => ({
     </span>
 
     <span
-      v-if="feedback.active && !compact"
+      v-if="feedback.percent > 0 && !compact"
       data-clipboard-file-download-progress
       class="absolute inset-x-3 bottom-0 h-0.5 overflow-hidden rounded-full bg-[color:var(--main-line-soft)]"
       aria-hidden="true"

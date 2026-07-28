@@ -7,23 +7,32 @@ const tauriApi = readFileSync("src/lib/tauri.ts", "utf8");
 const tauriLib = readFileSync("src-tauri/src/lib.rs", "utf8");
 const commands = readFileSync("src-tauri/src/commands.rs", "utf8");
 
-test("settings page exposes cache size and clear cache controls at the bottom", () => {
+test("settings page places startup first and groups cache management inside storage", () => {
   assert.match(settings, /data-cache-management-settings/);
   assert.match(settings, />缓存管理</);
-  assert.match(settings, />缓存占用</);
   assert.match(settings, /缓存大小计算中/);
   assert.match(settings, /刷新大小/);
   assert.match(settings, /清除缓存/);
   assert.match(settings, /包含图片历史、图片缩略图、视频缩略图等本地缓存/);
 
-  const startupStart = settings.indexOf(">开机启动<");
+  const startupStart = settings.indexOf("data-startup-settings");
+  const basicStart = settings.indexOf('data-settings-image2-section="basic"');
+  const storageStart = settings.indexOf("data-storage-settings");
   const cacheStart = settings.indexOf("data-cache-management-settings");
-  const errorStart = settings.indexOf('v-if="configStore.error"');
+  const syncStart = settings.indexOf(">同步内容<");
   assert.equal(startupStart >= 0, true);
+  assert.equal(basicStart >= 0, true);
+  assert.equal(storageStart >= 0, true);
   assert.equal(cacheStart >= 0, true);
-  assert.equal(errorStart >= 0, true);
-  assert.equal(startupStart < cacheStart, true);
-  assert.equal(cacheStart < errorStart, true);
+  assert.equal(syncStart >= 0, true);
+  assert.equal(startupStart < basicStart, true);
+  assert.equal(storageStart < cacheStart, true);
+  assert.equal(cacheStart < syncStart, true);
+  assert.match(
+    settings,
+    /<section data-storage-settings[\s\S]*?data-download-location-setting[\s\S]*?data-cache-management-settings[\s\S]*?<\/section>/,
+  );
+  assert.doesNotMatch(settings, /<section data-cache-management-settings/);
 });
 
 test("cache management uses dedicated Tauri commands and refreshes after clearing", () => {

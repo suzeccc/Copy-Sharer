@@ -852,6 +852,51 @@ button[data-window-control]:active {
   transform: translateY(-1px);
 }
 
+.floating-file-name {
+  position: relative;
+  transition: color 180ms ease;
+}
+
+.floating-file-name::after {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0,
+    var(--accent-text) 18%,
+    var(--accent-text) 82%,
+    transparent 100%
+  );
+  content: "";
+  opacity: 0;
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition:
+    opacity 140ms ease,
+    transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.floating-clipboard-row:hover .floating-file-name,
+.floating-clipboard-row:focus-within .floating-file-name {
+  color: var(--accent-text);
+}
+
+.floating-clipboard-row:hover .floating-file-name::after,
+.floating-clipboard-row:focus-within .floating-file-name::after {
+  opacity: 0.9;
+  transform: scaleX(1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .floating-file-name,
+  .floating-file-name::after {
+    transition: none;
+  }
+}
+
 .floating-link-chip {
   border-radius: 6px;
   padding: 1px 4px;

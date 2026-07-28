@@ -4,16 +4,30 @@ import { computed, ref } from "vue";
 import DeviceCard from "@/components/devices/DeviceCard.vue";
 import ManualConnectForm from "@/components/devices/ManualConnectForm.vue";
 import MobileConnectDialog from "@/components/mobile/MobileConnectDialog.vue";
+import NetworkDiagnosticsDialog from "@/components/settings/NetworkDiagnosticsDialog.vue";
 import Button from "@/components/ui/Button.vue";
 import Card from "@/components/ui/Card.vue";
 import RefreshButton from "@/components/ui/RefreshButton.vue";
+import {
+  getNetworkDiagnostics,
+  openWindowsNetworkSettings,
+  repairWindowsFirewall,
+} from "@/lib/tauri";
 import { useDevicesStore } from "@/stores/devices";
+import { useStatusStore } from "@/stores/status";
 import { useToastStore } from "@/stores/toasts";
+import type { NetworkDiagnosticReport } from "@/types/networkDiagnostics";
 
 const devicesStore = useDevicesStore();
+const statusStore = useStatusStore();
 const toastStore = useToastStore();
 const lanDiscoveryScanning = ref(false);
 const showMobileConnectDialog = ref(false);
+const networkDiagnosticsDialogOpen = ref(false);
+const networkDiagnostics = ref<NetworkDiagnosticReport | null>(null);
+const networkDiagnosticsLoading = ref(false);
+const networkDiagnosticsRepairing = ref(false);
+const networkDiagnosticsError = ref("");
 const LAN_DISCOVERY_SETTLE_TIMEOUT_MS = 9000;
 const LAN_DISCOVERY_SETTLE_POLL_MS = 120;
 const LAN_DISCOVERY_RESPONSE_GRACE_MS = 600;
@@ -26,6 +40,22 @@ const recentIps = computed(() =>
     ),
   ).slice(0, 8),
 );
+const connectionError = computed(() => devicesStore.error || statusStore.error);
+const networkDiagnosticSummary = computed(() => {
+  if (networkDiagnosticsLoading.value) return "正在检查网络环境...";
+  if (networkDiagnosticsError.value) return "诊断未完成";
+  if (!networkDiagnostics.value) return "尚未检测";
+
+  const errorCount = networkDiagnostics.value.checks.filter(
+    (item) => item.status === "error",
+  ).length;
+  const warningCount = networkDiagnostics.value.checks.filter(
+    (item) => item.status === "warning" || item.status === "unknown",
+  ).length;
+  if (errorCount > 0) return `发现 ${errorCount} 项需要处理`;
+  if (warningCount > 0) return `${warningCount} 项需要确认`;
+  return "局域网入口检查正常";
+});
 
 function delay(ms: number) {
   return new Promise<void>((resolve) => window.setTimeout(resolve, ms));
@@ -92,6 +122,52 @@ async function scanLanDevices() {
     lanDiscoveryScanning.value = false;
   }
 }
+
+function openNetworkDiagnosticsDialog() {
+  networkDiagnosticsDialogOpen.value = true;
+  if (!networkDiagnostics.value && !networkDiagnosticsLoading.value) {
+    void loadNetworkDiagnostics();
+  }
+}
+
+async function loadNetworkDiagnostics(showSuccess = false) {
+  if (networkDiagnosticsLoading.value || networkDiagnosticsRepairing.value) return;
+
+  networkDiagnosticsLoading.value = true;
+  networkDiagnosticsError.value = "";
+  try {
+    networkDiagnostics.value = await getNetworkDiagnostics();
+    if (showSuccess) toastStore.success("网络诊断已刷新");
+  } catch (error) {
+    networkDiagnosticsError.value = String(error);
+  } finally {
+    networkDiagnosticsLoading.value = false;
+  }
+}
+
+async function repairFirewall() {
+  if (networkDiagnosticsLoading.value || networkDiagnosticsRepairing.value) return;
+
+  networkDiagnosticsRepairing.value = true;
+  networkDiagnosticsError.value = "";
+  try {
+    networkDiagnostics.value = await repairWindowsFirewall();
+    toastStore.success("CopyShare 专用网络防火墙规则已修复");
+  } catch (error) {
+    networkDiagnosticsError.value = String(error);
+    toastStore.error(`防火墙修复失败：${String(error)}`);
+  } finally {
+    networkDiagnosticsRepairing.value = false;
+  }
+}
+
+async function openSystemNetworkSettings() {
+  try {
+    await openWindowsNetworkSettings();
+  } catch (error) {
+    toastStore.error(`无法打开 Windows 网络设置：${String(error)}`);
+  }
+}
 </script>
 
 <template>
@@ -155,9 +231,22 @@ async function scanLanDevices() {
             @connect="devicesStore.connect"
           />
         </div>
-        <p v-if="devicesStore.error" class="mt-4 rounded-md border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-100">
-          {{ devicesStore.error }}
-        </p>
+        <div
+          v-if="connectionError"
+          data-device-connection-error
+          class="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-md border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-100"
+        >
+          <p class="min-w-0 flex-1">{{ connectionError }}</p>
+          <Button
+            data-device-network-diagnostics-button
+            class="shrink-0"
+            size="sm"
+            variant="secondary"
+            @click="openNetworkDiagnosticsDialog"
+          >
+            开始诊断
+          </Button>
+        </div>
       </Card>
 
       <Card v-if="devicesStore.connected.length">
@@ -207,5 +296,17 @@ async function scanLanDevices() {
     </Card>
 
     <MobileConnectDialog v-model="showMobileConnectDialog" />
+    <NetworkDiagnosticsDialog
+      :open="networkDiagnosticsDialogOpen"
+      :report="networkDiagnostics"
+      :loading="networkDiagnosticsLoading"
+      :repairing="networkDiagnosticsRepairing"
+      :error="networkDiagnosticsError"
+      :summary="networkDiagnosticSummary"
+      @close="networkDiagnosticsDialogOpen = false"
+      @refresh="loadNetworkDiagnostics(true)"
+      @repair="repairFirewall"
+      @open-network-settings="openSystemNetworkSettings"
+    />
   </div>
 </template>

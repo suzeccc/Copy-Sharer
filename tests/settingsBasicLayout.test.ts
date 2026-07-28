@@ -14,6 +14,7 @@ assert.match(settings, /data-settings-image2-page class="[^"]*(?:^|\s)text-\[13p
 assert.match(settings, /data-settings-image2-section="basic"[\s\S]*<p class="text-\[13px\] font-bold/);
 assert.match(settings, /<span class="text-\[15px\] font-bold text-white">设备名称<\/span>/);
 assert.match(settings, /data-settings-image2-field[\s\S]*class="[^"]*\bh-8\b[^"]*(?:^|\s)text-\[13px\](?:\s|")/);
+assert.match(settings, /v-model="draft\.deviceName"[\s\S]*class="[^"]*\bw-full\b[^"]*max-w-\[320px\]/);
 assert.match(settings, /v-for="option in themeOptions"[\s\S]*class="[^"]*\bh-8\b[^"]*(?:^|\s)text-\[13px\](?:\s|")/);
 assert.match(settings, /border-\[color:var\(--accent-line\)\] bg-\[color:var\(--accent-soft\)\] text-\[color:var\(--accent-text\)\]/);
 assert.match(settings, /@blur="saveDeviceName"/);

@@ -532,6 +532,7 @@ fn upsert_mobile_content_item(
 
 fn mobile_clipboard_message(content: String) -> ClipboardMessage {
     let content_type = ClipboardContentType::Text;
+    let now = Utc::now();
     ClipboardMessage {
         message_id: Uuid::new_v4().to_string(),
         source_device_id: "mobile".to_string(),
@@ -539,7 +540,13 @@ fn mobile_clipboard_message(content: String) -> ClipboardMessage {
         content_hash: sync::content_hash(&content_type, &content),
         content_type,
         content,
-        timestamp: Utc::now().timestamp(),
+        timestamp: now.timestamp(),
+        origin_sequence: None,
+        event_version: Some(crate::models::ClipboardEventVersion {
+            physical_ms: now.timestamp_millis(),
+            logical: 0,
+            origin_device_id: "mobile".to_string(),
+        }),
     }
 }
 
@@ -633,6 +640,10 @@ fn mobile_runtime() -> &'static MobileRuntime {
         ))),
         server: Mutex::new(None),
     })
+}
+
+pub async fn mobile_server_running() -> bool {
+    mobile_runtime().server.lock().await.is_some()
 }
 
 async fn ensure_mobile_server(

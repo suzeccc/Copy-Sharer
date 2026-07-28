@@ -18,8 +18,8 @@ const defaultCapability = JSON.parse(
 );
 const mediaPreviewPath = "src/pages/MediaPreview.vue";
 
-assert.match(historyPreview, /FLOATING_CLIPBOARD_PREVIEW_LIMIT = 10/);
-assert.match(historyPreview, /FLOATING_CLIPBOARD_HISTORY_LIMIT = 50/);
+assert.match(historyPreview, /FLOATING_CLIPBOARD_PREVIEW_LIMIT = 20/);
+assert.match(historyPreview, /FLOATING_CLIPBOARD_HISTORY_LIMIT = 100/);
 
 assert.match(tauri, /WebviewWindow/);
 assert.match(tauri, /MEDIA_PREVIEW_WINDOW_LABEL/);
@@ -63,9 +63,14 @@ assert.match(mediaPreview, /finishImagePreviewDrag/);
 assert.doesNotMatch(mediaPreview, /window\.setTimeout/);
 assert.match(mediaPreview, /data-media-preview-window/);
 assert.match(mediaPreview, /data-media-preview-transparent-canvas/);
+assert.match(mediaPreview, /data-media-preview-viewer-frame/);
+assert.match(mediaPreview, /data-media-preview-stage/);
 assert.match(mediaPreview, /data-media-preview-glass-chrome/);
 assert.match(mediaPreview, /data-media-preview-glass-toolbar/);
 assert.match(mediaPreview, /class="relative h-screen w-screen overflow-hidden bg-transparent/);
+assert.match(mediaPreview, /bg-\[#101317\]\/\[0\.94\]/);
+assert.match(mediaPreview, /rounded-\[24px\]/);
+assert.doesNotMatch(mediaPreview, /pointer-events-none absolute inset-px/);
 assert.doesNotMatch(
   mediaPreview,
   /data-media-preview-window[\s\S]{0,240}bg-\[color:var\(--floating-surface-bg\)\]/,
@@ -74,6 +79,8 @@ assert.match(mediaPreview, /data-media-preview-minimize-button/);
 assert.match(mediaPreview, /@click="minimizeWindow"/);
 assert.match(mediaPreview, /data-media-preview-image/);
 assert.match(mediaPreview, /data-media-preview-image-drag-surface/);
+assert.match(mediaPreview, /media-preview-image !h-full !w-full !max-h-full !max-w-full/);
+assert.match(mediaPreview, /\.media-preview-image :deep\(img\)/);
 assert.match(mediaPreview, /data-media-preview-video/);
 assert.match(mediaPreview, /@wheel\.prevent="handleImagePreviewWheel"/);
 assert.match(mediaPreview, /@pointerdown\.left="handleImagePreviewDragPress"/);

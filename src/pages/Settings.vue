@@ -1,14 +1,17 @@
 <script setup lang="ts">
 import CheckCircle2 from "lucide-vue-next/dist/esm/icons/circle-check.js";
+import ChevronRight from "lucide-vue-next/dist/esm/icons/chevron-right.js";
 import Globe2 from "lucide-vue-next/dist/esm/icons/earth.js";
+import Keyboard from "lucide-vue-next/dist/esm/icons/keyboard.js";
 import Sparkles from "lucide-vue-next/dist/esm/icons/sparkles.js";
 import type { Component } from "vue";
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
 
+import ShortcutSettingsDialog from "@/components/settings/ShortcutSettingsDialog.vue";
 import Button from "@/components/ui/Button.vue";
 import Switch from "@/components/ui/Switch.vue";
-import { clampPort } from "@/lib/format";
 import { setUiLanguage } from "@/i18n";
+import { clampPort } from "@/lib/format";
 import {
   clearCache,
   getCacheSize,
@@ -64,6 +67,14 @@ const downloadLocationSaving = ref(false);
 const cacheSizeBytes = ref<number | null>(null);
 const cacheSizeLoading = ref(false);
 const cacheClearing = ref(false);
+const shortcutDialogOpen = ref(false);
+const configMutationSaving = computed(() =>
+  configStore.saving
+  || basicSettingsSaving.value
+  || syncContentSaving.value
+  || notificationSettingsSaving.value
+  || downloadLocationSaving.value,
+);
 
 type BasicSettingKey =
   | "uiLanguage"
@@ -87,9 +98,22 @@ type NotificationSettingKey =
   | "notifySyncError"
   | "notificationClipboardPreview";
 
+const shortcutEnabledCount = computed(() => [
+  draft.quickPanelShortcutEnabled,
+  draft.ocrShortcutEnabled,
+  draft.translateShortcutEnabled,
+  draft.snippetsShortcutEnabled,
+  draft.toggleSyncShortcutEnabled,
+].filter(Boolean).length);
+
 function applyThemePreview(theme: AppTheme) {
   document.documentElement.dataset.appTheme = theme;
   document.body.dataset.appTheme = theme;
+}
+
+function restoreDraftFromConfig() {
+  Object.assign(draft, configStore.config);
+  applyThemePreview(configStore.config.theme);
 }
 
 function formatCacheSize(bytes: number) {
@@ -122,6 +146,8 @@ watch(
       draft.syncText = next.syncText;
       draft.syncImage = next.syncImage;
       draft.syncFiles = next.syncFiles;
+      draft.maxSendFileSizeMib = next.maxSendFileSizeMib;
+      draft.maxReceiveFileSizeMib = next.maxReceiveFileSizeMib;
       draft.deduplicateSyncContent = next.deduplicateSyncContent;
       draft.trustedDevices = next.trustedDevices;
       return;
@@ -165,9 +191,11 @@ async function saveBasicSettings(
     silent?: boolean;
   } = {},
 ) {
-  if (configStore.saving || (basicSettingsSaving.value && !options.keepSaving)) return;
+  if (configStore.saving || (basicSettingsSaving.value && !options.keepSaving)) {
+    restoreDraftFromConfig();
+    return;
+  }
 
-  const previousConfig = { ...configStore.config };
   if (!options.keepSaving) {
     basicSettingsSaving.value = true;
   }
@@ -182,8 +210,7 @@ async function saveBasicSettings(
     });
 
     if (configStore.error) {
-      Object.assign(draft, previousConfig);
-      applyThemePreview(previousConfig.theme);
+      restoreDraftFromConfig();
       toastStore.error("保存失败");
     } else {
       if (!options.silent) {
@@ -210,7 +237,10 @@ async function saveDeviceName() {
 }
 
 async function savePort() {
-  if (configStore.saving || basicSettingsSaving.value) return;
+  if (configStore.saving || basicSettingsSaving.value) {
+    restoreDraftFromConfig();
+    return;
+  }
 
   const port = clampPort(draft.port);
   draft.port = port;
@@ -341,10 +371,20 @@ async function saveAutoOpenFolderAfterSave(autoOpenFolderAfterSave: boolean) {
 }
 
 async function saveSyncSetting(
-  patch: Partial<Pick<AppConfig, "syncImage" | "syncFiles" | "deduplicateSyncContent">>,
+  patch: Partial<
+    Pick<
+      AppConfig,
+      | "syncImage"
+      | "syncFiles"
+      | "deduplicateSyncContent"
+    >
+  >,
   options: { silent?: boolean } = { silent: true },
 ) {
-  if (configStore.saving || syncContentSaving.value) return;
+  if (configStore.saving || syncContentSaving.value) {
+    restoreDraftFromConfig();
+    return;
+  }
 
   syncContentSaving.value = true;
   Object.assign(draft, patch);
@@ -357,15 +397,7 @@ async function saveSyncSetting(
     });
 
     if (configStore.error) {
-      if ("syncImage" in patch) {
-        draft.syncImage = configStore.config.syncImage;
-      }
-      if ("syncFiles" in patch) {
-        draft.syncFiles = configStore.config.syncFiles;
-      }
-      if ("deduplicateSyncContent" in patch) {
-        draft.deduplicateSyncContent = configStore.config.deduplicateSyncContent;
-      }
+      restoreDraftFromConfig();
       toastStore.error("保存失败");
     } else {
       if (!options.silent) {
@@ -437,7 +469,10 @@ async function saveNotificationSetting(
   patch: Partial<Pick<AppConfig, NotificationSettingKey>>,
   options: { silent?: boolean } = { silent: true },
 ) {
-  if (configStore.saving || notificationSettingsSaving.value) return;
+  if (configStore.saving || notificationSettingsSaving.value) {
+    restoreDraftFromConfig();
+    return;
+  }
 
   notificationSettingsSaving.value = true;
   Object.assign(draft, patch);
@@ -450,9 +485,7 @@ async function saveNotificationSetting(
     });
 
     if (configStore.error) {
-      for (const key of Object.keys(patch) as NotificationSettingKey[]) {
-        draft[key] = configStore.config[key];
-      }
+      restoreDraftFromConfig();
       toastStore.error("保存失败");
     } else {
       if (!options.silent) {
@@ -518,6 +551,38 @@ async function clearLocalCache() {
 
 <template>
   <div data-settings-image2-page class="grid w-full gap-4 pb-4 text-[13px]">
+    <section data-startup-settings class="grid gap-2">
+      <p class="text-[13px] font-bold text-[color:var(--subtle-text)]">开机启动</p>
+      <div
+        data-settings-image2-card
+        class="overflow-hidden rounded-[10px] border border-[color:var(--main-line)] bg-[color:var(--panel-bg)]"
+      >
+        <div data-settings-image2-row class="flex min-h-[50px] items-center justify-between gap-4 px-3 py-3">
+          <span class="text-[15px] font-bold text-white">开机启动</span>
+          <Switch
+            control-only
+            :model-value="draft.autoStart"
+            label="开机启动"
+            :disabled="configMutationSaving"
+            @update:model-value="saveAutoStart"
+          />
+        </div>
+        <div
+          data-settings-image2-row
+          class="flex min-h-[50px] items-center justify-between gap-4 border-t border-[color:var(--main-line-soft)] px-3 py-3"
+        >
+          <span class="text-[15px] font-bold text-white">启动后自动同步</span>
+          <Switch
+            control-only
+            :model-value="draft.autoSync"
+            label="启动后自动同步"
+            :disabled="configMutationSaving"
+            @update:model-value="saveAutoSync"
+          />
+        </div>
+      </div>
+    </section>
+
     <section data-settings-image2-section="basic" class="grid gap-2">
       <p class="text-[13px] font-bold text-[color:var(--subtle-text)]">基础设置</p>
       <div
@@ -540,7 +605,7 @@ async function clearLocalCache() {
                 ? 'border-[color:var(--accent-line)] bg-[color:var(--accent-soft)] text-[color:var(--accent-text)]'
                 : 'border-[color:var(--main-line-soft)] bg-[color:var(--main-bg-muted)] text-slate-300 hover:border-[color:var(--main-line)] hover:text-white'"
               :title="option.hint"
-              :disabled="basicSettingsSaving"
+              :disabled="configMutationSaving"
               @click="saveUiLanguage(option.value)"
             >
               {{ option.label }}
@@ -557,8 +622,8 @@ async function clearLocalCache() {
             <input
               v-model="draft.deviceName"
               data-settings-image2-field
-              class="h-8 min-w-0 rounded-md border-0 bg-[color:var(--field-bg)] px-3 text-[13px] text-white"
-              :disabled="basicSettingsSaving"
+              class="h-8 w-full max-w-[320px] min-w-0 rounded-md border-0 bg-[color:var(--field-bg)] px-3 text-[13px] text-white"
+              :disabled="configMutationSaving"
               @blur="saveDeviceName"
               @keydown.enter="saveDeviceName"
             >
@@ -578,7 +643,7 @@ async function clearLocalCache() {
             type="number"
             min="1"
             max="65535"
-            :disabled="basicSettingsSaving"
+            :disabled="configMutationSaving"
             @change="savePort"
             @blur="savePort"
             @keydown.enter="savePort"
@@ -600,7 +665,7 @@ async function clearLocalCache() {
                 ? 'border-[color:var(--accent-line)] bg-[color:var(--accent-soft)] text-[color:var(--accent-text)]'
                 : 'border-[color:var(--main-line-soft)] bg-[color:var(--main-bg-muted)] text-slate-300 hover:border-[color:var(--main-line)] hover:text-white'"
               :title="option.hint"
-              :disabled="basicSettingsSaving"
+              :disabled="configMutationSaving"
               @click="saveTheme(option.value)"
             >
               {{ option.label }}
@@ -624,11 +689,136 @@ async function clearLocalCache() {
                 ? 'border-[color:var(--accent-line)] bg-[color:var(--accent-soft)] text-[color:var(--accent-text)]'
                 : 'border-[color:var(--main-line-soft)] bg-[color:var(--main-bg-muted)] text-slate-300 hover:border-[color:var(--main-line)] hover:text-white'"
               :title="option.hint"
-              :disabled="basicSettingsSaving"
+              :disabled="configMutationSaving"
               @click="saveCloseAction(option.value)"
             >
               {{ option.label }}
             </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section data-global-shortcut-settings class="grid gap-2">
+      <p class="text-[13px] font-bold text-[color:var(--subtle-text)]">快捷键</p>
+      <button
+        data-shortcut-settings-entry
+        data-settings-image2-card
+        type="button"
+        class="group flex min-h-[64px] w-full items-center justify-between gap-4 rounded-[10px] border border-[color:var(--main-line)] bg-[color:var(--panel-bg)] px-3 py-3 text-left transition hover:border-[color:var(--accent-line)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--accent-line)]"
+        @click="shortcutDialogOpen = true"
+      >
+        <span class="flex min-w-0 items-center gap-3">
+          <span class="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-[color:var(--main-line-soft)] bg-[color:var(--main-bg-muted)] text-[color:var(--accent-text)]">
+            <Keyboard class="h-4 w-4" />
+          </span>
+          <span class="grid min-w-0 gap-1">
+            <span class="text-[15px] font-bold text-white">快捷键设置</span>
+            <span class="text-[13px] text-[color:var(--muted-text)]">
+              已启用 {{ shortcutEnabledCount }} 个，点击统一管理
+            </span>
+          </span>
+        </span>
+        <ChevronRight class="h-4 w-4 shrink-0 text-slate-500 transition group-hover:translate-x-0.5 group-hover:text-[color:var(--accent-text)]" />
+      </button>
+    </section>
+
+    <section data-storage-settings class="grid gap-2">
+      <p class="text-[13px] font-bold text-[color:var(--subtle-text)]">存储</p>
+      <div
+        data-download-location-setting
+        data-settings-image2-card
+        class="overflow-hidden rounded-[10px] border border-[color:var(--main-line)] bg-[color:var(--panel-bg)]"
+      >
+        <div data-settings-image2-row class="flex min-h-[58px] items-center justify-between gap-4 px-3 py-3">
+          <div class="grid min-w-0 flex-1 gap-2">
+            <span class="text-[15px] font-bold text-white">下载位置</span>
+            <span
+              data-settings-image2-field
+              :data-i18n-ignore="draft.fileSaveDir ? '' : undefined"
+              class="h-8 min-w-0 truncate rounded-md bg-[color:var(--field-bg)] px-3 font-mono text-[13px] leading-8 text-slate-300"
+              :title="draft.fileSaveDir || '默认下载目录'"
+            >
+              {{ draft.fileSaveDir || "默认下载目录" }}
+            </span>
+            <span class="text-[13px] text-[color:var(--muted-text)]">接收文件或复制远端文件时保存到这里</span>
+          </div>
+          <div class="flex flex-wrap justify-end gap-2">
+            <Button
+              size="sm"
+              variant="secondary"
+              :disabled="configMutationSaving"
+              @click="chooseDownloadLocation"
+            >
+              更改位置
+            </Button>
+            <Button
+              size="sm"
+              variant="secondary"
+              :disabled="configMutationSaving"
+              @click="openDownloadLocation"
+            >
+              打开文件夹
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              :disabled="configMutationSaving || !draft.fileSaveDir"
+              @click="resetDownloadLocation"
+            >
+              恢复默认
+            </Button>
+          </div>
+        </div>
+        <div
+          data-settings-image2-row
+          class="flex min-h-[50px] items-center justify-between gap-4 border-t border-[color:var(--main-line-soft)] px-3 py-3"
+        >
+          <span class="grid min-w-0 gap-1">
+            <span class="text-[15px] font-bold text-white">文件保存后操作</span>
+            <span class="text-[13px] text-[color:var(--muted-text)]">接收文件保存完成后自动打开文件夹</span>
+          </span>
+          <Switch
+            control-only
+            :model-value="draft.autoOpenFolderAfterSave"
+            label="自动打开文件夹"
+            :disabled="configMutationSaving"
+            @update:model-value="saveAutoOpenFolderAfterSave"
+          />
+        </div>
+        <div
+          data-cache-management-settings
+          data-settings-image2-row
+          class="flex min-h-[68px] flex-col gap-3 border-t border-[color:var(--main-line-soft)] px-3 py-3 lg:flex-row lg:items-center lg:justify-between"
+        >
+          <span class="grid min-w-0 gap-1">
+            <span class="text-[15px] font-bold text-white">缓存管理</span>
+            <span class="text-[13px] text-[color:var(--muted-text)]">
+              包含图片历史、图片缩略图、视频缩略图等本地缓存
+            </span>
+          </span>
+          <div class="flex flex-wrap items-center justify-end gap-2">
+            <span
+              class="h-8 min-w-[104px] rounded-md bg-[color:var(--field-bg)] px-3 text-center font-mono text-[13px] font-bold leading-8 text-slate-200"
+            >
+              {{ cacheSizeLabel }}
+            </span>
+            <Button
+              size="sm"
+              variant="secondary"
+              :disabled="cacheSizeLoading || cacheClearing"
+              @click="loadCacheSize"
+            >
+              刷新大小
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              :disabled="cacheClearing || cacheSizeLoading || cacheSizeBytes === 0"
+              @click="clearLocalCache"
+            >
+              清除缓存
+            </Button>
           </div>
         </div>
       </div>
@@ -659,7 +849,7 @@ async function clearLocalCache() {
             control-only
             :model-value="draft.syncImage"
             label="同步图片"
-            :disabled="syncContentSaving"
+            :disabled="configMutationSaving"
             @update:model-value="saveSyncImage"
           />
         </div>
@@ -675,9 +865,23 @@ async function clearLocalCache() {
             control-only
             :model-value="draft.syncFiles"
             label="同步文件"
-            :disabled="syncContentSaving"
+            :disabled="configMutationSaving"
             @update:model-value="saveSyncFiles"
           />
+        </div>
+        <div
+          data-file-transfer-limit-summary
+          class="flex min-h-[58px] items-center justify-between gap-4 border-t border-[color:var(--main-line-soft)] px-3 py-3"
+        >
+          <span class="grid min-w-0 gap-1">
+            <span class="text-[15px] font-bold text-white">文件传输上限</span>
+            <span class="text-[13px] text-[color:var(--muted-text)]">
+              无论一个还是多个文件，每次发送或接收最多 10 GiB
+            </span>
+          </span>
+          <span class="shrink-0 rounded-md border border-[color:var(--main-line-soft)] bg-[color:var(--field-bg)] px-2.5 py-1 font-mono text-[12px] font-bold text-slate-200">
+            最高 10 GiB
+          </span>
         </div>
         <div
           data-settings-image2-row
@@ -691,18 +895,9 @@ async function clearLocalCache() {
             control-only
             :model-value="draft.deduplicateSyncContent"
             label="去重同步内容"
-            :disabled="syncContentSaving"
+            :disabled="configMutationSaving"
             @update:model-value="saveDeduplicateSyncContent"
           />
-        </div>
-        <div
-          data-settings-image2-row
-          class="flex min-h-[50px] items-center justify-between gap-4 border-t border-[color:var(--main-line-soft)] px-3 py-3"
-        >
-          <span class="text-[15px] font-bold text-white">已信任设备</span>
-          <span class="rounded-md bg-[color:var(--field-bg)] px-3 py-1.5 text-[13px] font-bold text-slate-300">
-            {{ draft.trustedDevices.length ? `${draft.trustedDevices.length} 台` : "暂无" }}
-          </span>
         </div>
       </div>
     </section>
@@ -722,7 +917,7 @@ async function clearLocalCache() {
             control-only
             :model-value="draft.saveHistory"
             label="保存同步历史"
-            :disabled="basicSettingsSaving"
+            :disabled="configMutationSaving"
             @update:model-value="saveHistorySetting"
           />
         </div>
@@ -759,7 +954,7 @@ async function clearLocalCache() {
                 : 'text-slate-300 hover:bg-[rgba(255,255,255,0.035)] hover:text-white'"
               :title="option.hint"
               :aria-pressed="draft.translationEngine === option.value"
-              :disabled="basicSettingsSaving"
+              :disabled="configMutationSaving"
               @click="saveTranslationEngine(option.value)"
             >
               <component :is="option.icon" class="h-4 w-4 shrink-0" />
@@ -819,7 +1014,7 @@ async function clearLocalCache() {
               placeholder="https://api.openai.com"
               inputmode="url"
               spellcheck="false"
-              :disabled="basicSettingsSaving"
+              :disabled="configMutationSaving"
               @blur="saveTranslationApiUrl"
               @keydown.enter.prevent="saveTranslationApiUrl"
             >
@@ -840,7 +1035,7 @@ async function clearLocalCache() {
               type="password"
               placeholder="sk-..."
               autocomplete="off"
-              :disabled="basicSettingsSaving"
+              :disabled="configMutationSaving"
               @blur="saveTranslationApiKey"
               @keydown.enter.prevent="saveTranslationApiKey"
             >
@@ -860,7 +1055,7 @@ async function clearLocalCache() {
               class="h-9 w-full rounded-md border-0 bg-[color:var(--field-bg)] px-3 text-[13px] text-white outline-none ring-1 ring-transparent transition focus:ring-[color:var(--accent-line)] lg:w-[min(300px,40vw)]"
               placeholder="gpt-4o-mini"
               spellcheck="false"
-              :disabled="basicSettingsSaving"
+              :disabled="configMutationSaving"
               @blur="saveTranslationModel"
               @keydown.enter.prevent="saveTranslationModel"
             >
@@ -884,7 +1079,7 @@ async function clearLocalCache() {
             control-only
             :model-value="draft.desktopNotifications"
             label="启用桌面通知"
-            :disabled="notificationSettingsSaving"
+            :disabled="configMutationSaving"
             @update:model-value="saveDesktopNotifications"
           />
         </div>
@@ -897,7 +1092,7 @@ async function clearLocalCache() {
             control-only
             :model-value="draft.notifyClipboard"
             label="剪贴板内容提醒"
-            :disabled="notificationSettingsSaving || !draft.desktopNotifications"
+            :disabled="configMutationSaving || !draft.desktopNotifications"
             @update:model-value="saveNotifyClipboard"
           />
         </div>
@@ -910,7 +1105,7 @@ async function clearLocalCache() {
             control-only
             :model-value="draft.notifyTrustRequired"
             label="信任确认提醒"
-            :disabled="notificationSettingsSaving || !draft.desktopNotifications"
+            :disabled="configMutationSaving || !draft.desktopNotifications"
             @update:model-value="saveNotifyTrustRequired"
           />
         </div>
@@ -926,7 +1121,7 @@ async function clearLocalCache() {
             control-only
             :model-value="draft.notifyDeviceStatus"
             label="设备上线/离线提醒"
-            :disabled="notificationSettingsSaving || !draft.desktopNotifications"
+            :disabled="configMutationSaving || !draft.desktopNotifications"
             @update:model-value="saveNotifyDeviceStatus"
           />
         </div>
@@ -939,7 +1134,7 @@ async function clearLocalCache() {
             control-only
             :model-value="draft.notifySyncError"
             label="同步异常提醒"
-            :disabled="notificationSettingsSaving || !draft.desktopNotifications"
+            :disabled="configMutationSaving || !draft.desktopNotifications"
             @update:model-value="saveNotifySyncError"
           />
         </div>
@@ -952,150 +1147,9 @@ async function clearLocalCache() {
             control-only
             :model-value="draft.notificationClipboardPreview"
             label="通知中显示剪贴板预览"
-            :disabled="notificationSettingsSaving || !draft.desktopNotifications || !draft.notifyClipboard"
+            :disabled="configMutationSaving || !draft.desktopNotifications || !draft.notifyClipboard"
             @update:model-value="saveNotificationClipboardPreview"
           />
-        </div>
-      </div>
-    </section>
-
-    <section class="grid gap-2">
-      <p class="text-[13px] font-bold text-[color:var(--subtle-text)]">开机启动</p>
-      <div
-        data-settings-image2-card
-        class="overflow-hidden rounded-[10px] border border-[color:var(--main-line)] bg-[color:var(--panel-bg)]"
-      >
-        <div data-settings-image2-row class="flex min-h-[50px] items-center justify-between gap-4 px-3 py-3">
-          <span class="text-[15px] font-bold text-white">开机启动</span>
-          <Switch
-            control-only
-            :model-value="draft.autoStart"
-            label="开机启动"
-            :disabled="basicSettingsSaving"
-            @update:model-value="saveAutoStart"
-          />
-        </div>
-        <div
-          data-settings-image2-row
-          class="flex min-h-[50px] items-center justify-between gap-4 border-t border-[color:var(--main-line-soft)] px-3 py-3"
-        >
-          <span class="text-[15px] font-bold text-white">启动后自动同步</span>
-          <Switch
-            control-only
-            :model-value="draft.autoSync"
-            label="启动后自动同步"
-            :disabled="basicSettingsSaving"
-            @update:model-value="saveAutoSync"
-          />
-        </div>
-      </div>
-    </section>
-
-    <section class="grid gap-2">
-      <p class="text-[13px] font-bold text-[color:var(--subtle-text)]">存储</p>
-      <div
-        data-download-location-setting
-        data-settings-image2-card
-        class="overflow-hidden rounded-[10px] border border-[color:var(--main-line)] bg-[color:var(--panel-bg)]"
-      >
-        <div data-settings-image2-row class="flex min-h-[58px] items-center justify-between gap-4 px-3 py-3">
-          <div class="grid min-w-0 flex-1 gap-2">
-            <span class="text-[15px] font-bold text-white">下载位置</span>
-            <span
-              data-settings-image2-field
-              :data-i18n-ignore="draft.fileSaveDir ? '' : undefined"
-              class="h-8 min-w-0 truncate rounded-md bg-[color:var(--field-bg)] px-3 font-mono text-[13px] leading-8 text-slate-300"
-              :title="draft.fileSaveDir || '默认下载目录'"
-            >
-              {{ draft.fileSaveDir || "默认下载目录" }}
-            </span>
-            <span class="text-[13px] text-[color:var(--muted-text)]">接收文件或复制远端文件时保存到这里</span>
-          </div>
-          <div class="flex flex-wrap justify-end gap-2">
-            <Button
-              size="sm"
-              variant="secondary"
-              :disabled="downloadLocationSaving"
-              @click="chooseDownloadLocation"
-            >
-              更改位置
-            </Button>
-            <Button
-              size="sm"
-              variant="secondary"
-              :disabled="downloadLocationSaving"
-              @click="openDownloadLocation"
-            >
-              打开文件夹
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              :disabled="downloadLocationSaving || !draft.fileSaveDir"
-              @click="resetDownloadLocation"
-            >
-              恢复默认
-            </Button>
-          </div>
-        </div>
-        <div
-          data-settings-image2-row
-          class="flex min-h-[50px] items-center justify-between gap-4 border-t border-[color:var(--main-line-soft)] px-3 py-3"
-        >
-          <span class="grid min-w-0 gap-1">
-            <span class="text-[15px] font-bold text-white">文件保存后操作</span>
-            <span class="text-[13px] text-[color:var(--muted-text)]">接收文件保存完成后自动打开文件夹</span>
-          </span>
-          <Switch
-            control-only
-            :model-value="draft.autoOpenFolderAfterSave"
-            label="自动打开文件夹"
-            :disabled="basicSettingsSaving"
-            @update:model-value="saveAutoOpenFolderAfterSave"
-          />
-        </div>
-      </div>
-    </section>
-
-    <section data-cache-management-settings class="grid gap-2">
-      <p class="text-[13px] font-bold text-[color:var(--subtle-text)]">缓存管理</p>
-      <div
-        data-settings-image2-card
-        class="overflow-hidden rounded-[10px] border border-[color:var(--main-line)] bg-[color:var(--panel-bg)]"
-      >
-        <div
-          data-settings-image2-row
-          class="flex min-h-[68px] flex-col gap-3 px-3 py-3 lg:flex-row lg:items-center lg:justify-between"
-        >
-          <span class="grid min-w-0 gap-1">
-            <span class="text-[15px] font-bold text-white">缓存占用</span>
-            <span class="text-[13px] text-[color:var(--muted-text)]">
-              包含图片历史、图片缩略图、视频缩略图等本地缓存
-            </span>
-          </span>
-          <div class="flex flex-wrap items-center justify-end gap-2">
-            <span
-              class="h-8 min-w-[104px] rounded-md bg-[color:var(--field-bg)] px-3 text-center font-mono text-[13px] font-bold leading-8 text-slate-200"
-            >
-              {{ cacheSizeLabel }}
-            </span>
-            <Button
-              size="sm"
-              variant="secondary"
-              :disabled="cacheSizeLoading || cacheClearing"
-              @click="loadCacheSize"
-            >
-              刷新大小
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              :disabled="cacheClearing || cacheSizeLoading || cacheSizeBytes === 0"
-              @click="clearLocalCache"
-            >
-              清除缓存
-            </Button>
-          </div>
         </div>
       </div>
     </section>
@@ -1103,5 +1157,10 @@ async function clearLocalCache() {
     <p v-if="configStore.error" class="rounded-md border border-red-500/40 bg-red-500/10 px-3 py-2 text-[13px] text-red-100">
       {{ configStore.error }}
     </p>
+
+    <ShortcutSettingsDialog
+      :open="shortcutDialogOpen"
+      @close="shortcutDialogOpen = false"
+    />
   </div>
 </template>

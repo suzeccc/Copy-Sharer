@@ -12,7 +12,8 @@ use crate::{
     history,
     library::{self, LibraryCopyPayload},
     mobile,
-    ocr,
+    network_diagnostics::{self, NetworkDiagnosticReport},
+    notifications, ocr,
     models::{
         AppConfig, AppStatus, ClipboardContentType, ClipboardTextItem, CopyHistoryResult,
         DeviceInfo, FileTransferTask, HistoryItem, LibraryItem, LibraryItemUpdate,
@@ -191,6 +192,44 @@ pub async fn update_config(
     tray::update_tray_status(&app, state.inner()).await;
     app.emit("config-updated", next_config.clone())?;
     Ok(next_config)
+}
+
+#[tauri::command]
+pub async fn get_network_diagnostics(
+    state: State<'_, AppState>,
+) -> AppResult<NetworkDiagnosticReport> {
+    collect_network_diagnostics(state.inner().clone()).await
+}
+
+#[tauri::command]
+pub async fn repair_windows_firewall(
+    state: State<'_, AppState>,
+) -> AppResult<NetworkDiagnosticReport> {
+    let sync_port = state.config().await.port;
+    tauri::async_runtime::spawn_blocking(move || {
+        network_diagnostics::repair_windows_firewall(sync_port)
+    })
+    .await
+    .map_err(|error| AppError::Tauri(format!("防火墙修复任务执行失败：{error}")))??;
+
+    collect_network_diagnostics(state.inner().clone()).await
+}
+
+async fn collect_network_diagnostics(state: AppState) -> AppResult<NetworkDiagnosticReport> {
+    let config = state.config().await;
+    let sync_running = state.status().await.running;
+    let discovery_running = discovery::discovery_running();
+    let mobile_server_running = mobile::mobile_server_running().await;
+    tauri::async_runtime::spawn_blocking(move || {
+        network_diagnostics::run(
+            &config,
+            sync_running,
+            discovery_running,
+            mobile_server_running,
+        )
+    })
+    .await
+    .map_err(|error| AppError::Tauri(format!("网络诊断任务执行失败：{error}")))
 }
 
 #[tauri::command]
@@ -431,6 +470,17 @@ pub async fn get_clipboard_history() -> AppResult<Vec<ClipboardTextItem>> {
 }
 
 #[tauri::command]
+pub fn read_clipboard_text(app: AppHandle) -> AppResult<String> {
+    let text = clipboard::read_clipboard_text(&app)?;
+    if text.trim().is_empty() {
+        return Err(AppError::InvalidInput(
+            "剪贴板中没有可翻译的文本。".to_string(),
+        ));
+    }
+    Ok(text)
+}
+
+#[tauri::command]
 pub async fn recognize_clipboard_image(app: AppHandle) -> AppResult<OcrResponse> {
     let image = clipboard::read_clipboard_image_base64(&app)?
         .ok_or_else(|| AppError::Ocr("剪贴板中没有图片，请先复制或截图。".to_string()))?;
@@ -519,6 +569,15 @@ pub async fn cancel_file_transfer(
     transfer_id: String,
 ) -> AppResult<FileTransferTask> {
     file_transfer::cancel_file_transfer(app, state.inner().clone(), transfer_id).await
+}
+
+#[tauri::command]
+pub async fn resume_file_transfer(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    transfer_id: String,
+) -> AppResult<FileTransferTask> {
+    file_transfer::resume_file_transfer(app, state.inner().clone(), transfer_id).await
 }
 
 #[tauri::command]
@@ -767,6 +826,22 @@ pub async fn open_external_url(url: String) -> AppResult<()> {
     Ok(())
 }
 
+#[tauri::command]
+pub async fn open_windows_network_settings() -> AppResult<()> {
+    #[cfg(target_os = "windows")]
+    {
+        Command::new("explorer.exe")
+            .arg("ms-settings:network-status")
+            .spawn()?;
+        return Ok(());
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    Err(AppError::InvalidInput(
+        "打开系统网络设置目前仅支持 Windows".to_string(),
+    ))
+}
+
 #[cfg(target_os = "windows")]
 fn open_url_with_system_browser(url: &str) -> AppResult<()> {
     Command::new("rundll32")
@@ -804,6 +879,16 @@ pub async fn hide_main_window(app: AppHandle) -> AppResult<()> {
         window.hide()?;
     }
     Ok(())
+}
+
+#[tauri::command]
+pub fn exit_app(app: AppHandle) {
+    app.exit(0);
+}
+
+#[tauri::command]
+pub async fn send_test_notification(app: AppHandle) -> AppResult<()> {
+    notifications::notify_test(&app).map_err(AppError::Tauri)
 }
 
 #[tauri::command]

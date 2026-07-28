@@ -41,6 +41,7 @@ export const useLibraryStore = defineStore("library", {
       const query = state.query.trim().toLocaleLowerCase();
       return state.items.filter((item) => {
         if (state.activeView === "snippets" && item.role !== "snippet") return false;
+        if (state.activeView === "all" && item.role !== "saved") return false;
         if (
           state.contentTypeFilter !== "all"
           && item.contentType !== state.contentTypeFilter

@@ -22,8 +22,8 @@ export type ClipboardPreviewItem = {
 };
 
 export const CLIPBOARD_PREVIEW_LIMIT = 20;
-export const FLOATING_CLIPBOARD_PREVIEW_LIMIT = 10;
-export const FLOATING_CLIPBOARD_HISTORY_LIMIT = 50;
+export const FLOATING_CLIPBOARD_PREVIEW_LIMIT = 20;
+export const FLOATING_CLIPBOARD_HISTORY_LIMIT = 100;
 export const CLIPBOARD_MORE_TEXT_LIMIT = 80;
 export const CLIPBOARD_MORE_FILE_NAME_LIMIT = 32;
 export const CLIPBOARD_CATEGORIES = ["全部", "文本", "图片", "视频", "链接", "文件"] as const;

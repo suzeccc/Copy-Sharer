@@ -57,9 +57,19 @@ const commandsRs = readFileSync("src-tauri/src/commands.rs", "utf8");
 const libRs = readFileSync("src-tauri/src/lib.rs", "utf8");
 const tauriTs = readFileSync("src/lib/tauri.ts", "utf8");
 
-assert.doesNotMatch(commandsRs, /send_test_notification/);
-assert.doesNotMatch(libRs, /commands::send_test_notification/);
-assert.doesNotMatch(tauriTs, /sendTestNotification/);
+assert.match(commandsRs, /send_test_notification/);
+assert.match(
+  commandsRs,
+  /send_test_notification[\s\S]*notifications::notify_test\(&app\)\.map_err\(AppError::Tauri\)/,
+);
+assert.match(notificationsRs, /pub fn notify_test\(app: &AppHandle\) -> Result<\(\), String>/);
+assert.match(notificationsRs, /fn notification_result/);
+assert.doesNotMatch(
+  commandsRs,
+  /notifications::notify_test\(&app\);\s*Ok\(\(\)\)/,
+);
+assert.match(libRs, /commands::send_test_notification/);
+assert.match(tauriTs, /sendTestNotification/);
 assert.match(settingsVue, /data-desktop-notification-settings/);
 assert.doesNotMatch(settingsVue, /sendTestNotification/);
 assert.doesNotMatch(settingsVue, /发送测试通知/);

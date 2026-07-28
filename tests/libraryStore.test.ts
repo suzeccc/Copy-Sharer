@@ -60,6 +60,7 @@ test("library store filters items and tracks history membership", async () => {
   store.query = "vpn";
   assert.deepEqual(store.filteredItems.map((item) => item.id), ["saved-1"]);
   store.query = "";
+  assert.deepEqual(store.filteredItems.map((item) => item.id), ["saved-1"]);
   store.activeView = "snippets";
   assert.deepEqual(store.filteredItems.map((item) => item.id), ["snippet-1"]);
   store.activeView = "all";

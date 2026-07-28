@@ -42,7 +42,7 @@ assert.equal(english["简体中文"], "Simplified Chinese");
 
 assert.match(configTypes, /export type UiLanguage = "system" \| "zh-CN" \| "en-US"/);
 assert.match(configTypes, /uiLanguage: UiLanguage/);
-assert.match(configStore, /configVersion: 7/);
+assert.match(configStore, /configVersion: 10/);
 assert.match(configStore, /uiLanguage: "system"/);
 assert.match(main, /initializeI18n\(initialConfig\?\.uiLanguage \?\? "system"\)/);
 assert.match(main, /onAppEvent\("config-updated"/);
@@ -51,7 +51,7 @@ assert.match(settings, /@click="saveUiLanguage\(option\.value\)"/);
 
 assert.match(rustModels, /pub enum UiLanguage/);
 assert.match(rustModels, /#\[serde\(rename = "zh-CN"\)\]/);
-assert.match(rustConfig, /CURRENT_CONFIG_VERSION: u16 = 7/);
+assert.match(rustConfig, /CURRENT_CONFIG_VERSION: u16 = 10/);
 assert.match(rustTray, /update_tray_locale/);
 assert.match(rustTray, /i18n::translate/);
 assert.match(rustNotifications, /\.title\(i18n::translate\(config, title\)\)/);

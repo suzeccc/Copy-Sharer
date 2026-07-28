@@ -40,6 +40,7 @@ import {
   openExternalUrl,
   openHistoryFileLocation,
   openTransferFolder,
+  resumeFileTransfer,
 } from "@/lib/tauri";
 import { useHistoryStore } from "@/stores/history";
 import { useLibraryStore } from "@/stores/library";
@@ -250,7 +251,7 @@ async function openClipboardVideoPreview(item: ClipboardPreviewItem) {
       item,
       historyStore.fileDownloadActivity(item.fileTransferId),
     );
-    if (action === "download") {
+    if (action === "download" || action === "resume") {
       await handleClipboardItemClick(item);
       return;
     }
@@ -326,6 +327,22 @@ async function handleClipboardItemClick(item: ClipboardPreviewItem) {
   }
   if (action === "unavailable") {
     toastStore.error("文件下载已失效");
+    return;
+  }
+
+  if (action === "resume") {
+    if (!item.fileTransferId) {
+      return;
+    }
+    try {
+      const task = await resumeFileTransfer(item.fileTransferId);
+      historyStore.updateFileDownloadTask(task);
+      toastStore.success(
+        task.status === "waitingForPeer" ? "已继续等待发送设备上线" : "正在继续下载",
+      );
+    } catch (error) {
+      toastStore.error(`继续下载失败：${String(error)}`);
+    }
     return;
   }
 
@@ -871,10 +888,10 @@ function clipboardTime(value: string | undefined) {
                     >
                       <HistoryImageThumb :history-id="item.id" />
                     </button>
-              <div
-                data-i18n-ignore
-                data-clipboard-image-summary
-                class="flex min-w-0 items-baseline gap-2.5 text-[13px] font-medium leading-[19px] text-[color:var(--clipboard-card-text)]"
+                    <div
+                      data-i18n-ignore
+                      data-clipboard-image-summary
+                      class="flex min-w-0 items-baseline gap-2.5 text-[13px] font-medium leading-[19px] text-[color:var(--clipboard-card-text)]"
                     >
                       <span data-clipboard-image-name class="min-w-0 truncate">
                         {{ clipboardFileSummary(item).name }}
@@ -888,11 +905,11 @@ function clipboardTime(value: string | undefined) {
                       </span>
                     </div>
                   </div>
-            <div
-              v-else-if="item.contentType === 'fileList'"
-              data-i18n-ignore
-              data-clipboard-file-summary
-              class="mt-2 flex min-w-0 select-none items-center gap-3 text-[13px] font-medium leading-[19px] text-[color:var(--clipboard-card-text)]"
+                  <div
+                    v-else-if="item.contentType === 'fileList'"
+                    data-i18n-ignore
+                    data-clipboard-file-summary
+                    class="mt-2 flex min-w-0 select-none items-center gap-3 text-[13px] font-medium leading-[19px] text-[color:var(--clipboard-card-text)]"
                   >
                     <button
                       v-if="isClipboardVideoFile(item)"
@@ -943,10 +960,10 @@ function clipboardTime(value: string | undefined) {
                     </div>
                   </div>
                   <button
-              v-else-if="getClipboardLinkUrl(item.text)"
-              data-i18n-ignore
-              data-clipboard-link-button
-              class="mt-1.5 block w-fit max-w-full min-w-0 cursor-pointer select-none break-all text-left text-[13px] font-medium leading-[19px] underline-offset-2 transition-colors duration-150 hover:text-[color:var(--accent-text)] hover:underline"
+                    v-else-if="getClipboardLinkUrl(item.text)"
+                    data-i18n-ignore
+                    data-clipboard-link-button
+                    class="mt-1.5 block w-fit max-w-full min-w-0 cursor-pointer select-none break-all text-left text-[13px] font-medium leading-[19px] underline-offset-2 transition-colors duration-150 hover:text-[color:var(--accent-text)] hover:underline"
                     :class="[
                       clipboardTextClass(getClipboardDisplayType(item)),
                       isClipboardItemExpanded(item) ? 'whitespace-pre-wrap' : 'line-clamp-2',
@@ -958,10 +975,10 @@ function clipboardTime(value: string | undefined) {
                     {{ item.text }}
                   </button>
                   <p
-              v-else
-              data-i18n-ignore
-              data-clipboard-history-text
-              class="mt-1.5 min-w-0 break-all text-[13px] font-medium leading-[19px]"
+                    v-else
+                    data-i18n-ignore
+                    data-clipboard-history-text
+                    class="mt-1.5 min-w-0 break-all text-[13px] font-medium leading-[19px]"
                     :class="[
                       clipboardTextClass(getClipboardDisplayType(item)),
                       isClipboardItemExpanded(item) ? 'whitespace-pre-wrap' : 'line-clamp-2',
@@ -987,10 +1004,10 @@ function clipboardTime(value: string | undefined) {
                     <div data-clipboard-card-footer class="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs text-[color:var(--clipboard-card-footer-text)]">
                       <p data-clipboard-card-time class="shrink-0">{{ clipboardTime(item.createdAt) }}</p>
                       <span
-                  v-if="item.sourceDevice"
-                  data-i18n-ignore
-                  data-clipboard-history-device
-                  class="min-w-0 max-w-[9rem] truncate text-[color:var(--clipboard-card-footer-text)]"
+                        v-if="item.sourceDevice"
+                        data-i18n-ignore
+                        data-clipboard-history-device
+                        class="min-w-0 max-w-[9rem] truncate text-[color:var(--clipboard-card-footer-text)]"
                         :title="item.sourceDevice"
                       >
                         · {{ item.sourceDevice }}

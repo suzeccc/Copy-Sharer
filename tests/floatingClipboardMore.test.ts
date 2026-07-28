@@ -18,6 +18,13 @@ assert.match(floatingPanel, /openFloatingClipboardHistoryWindow/);
 assert.match(floatingPanel, /openFloatingClipboardHistoryWindow\(\{\s*items:\s*clipboardHistoryItems\s*\}\)/);
 assert.match(floatingPanel, /shouldShowFloatingClipboardItemMore/);
 assert.match(floatingPanel, /data-floating-clipboard-item-more-button/);
+assert.match(floatingPanel, /data-floating-clipboard-image-name/);
+assert.match(floatingPanel, /data-floating-clipboard-file-name/);
+assert.match(
+  floatingPanel,
+  /data-floating-clipboard-image-name[\s\S]*?class="floating-file-name min-w-0 truncate"/,
+);
+assert.match(floatingPanel, /class="floating-file-name min-w-0 truncate"/);
 assert.match(floatingPanel, /data-floating-clipboard-content/);
 assert.match(
   floatingPanel,
@@ -105,3 +112,7 @@ const stylesheet = readFileSync("src/style.css", "utf8");
 assert.match(stylesheet, /--floating-clipboard-history-bg:/);
 assert.match(stylesheet, /\.floating-clipboard-history-surface\s*\{/);
 assert.match(stylesheet, /background:\s*var\(--floating-clipboard-history-bg\)/);
+assert.match(stylesheet, /\.floating-file-name::after\s*\{/);
+assert.match(stylesheet, /\.floating-clipboard-row:hover \.floating-file-name::after/);
+assert.match(stylesheet, /transform:\s*scaleX\(1\)/);
+assert.match(stylesheet, /prefers-reduced-motion:\s*reduce[\s\S]*?\.floating-file-name::after/);

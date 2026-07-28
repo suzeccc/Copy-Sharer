@@ -43,8 +43,8 @@ function stripCreatedAt<T>(value: T): T {
 const historyPreviewSource = readFileSync("src/lib/historyPreview.ts", "utf8");
 
 assert.equal(CLIPBOARD_PREVIEW_LIMIT, 20);
-assert.equal(FLOATING_CLIPBOARD_PREVIEW_LIMIT, 10);
-assert.equal(FLOATING_CLIPBOARD_HISTORY_LIMIT, 50);
+assert.equal(FLOATING_CLIPBOARD_PREVIEW_LIMIT, 20);
+assert.equal(FLOATING_CLIPBOARD_HISTORY_LIMIT, 100);
 assert.doesNotMatch(historyPreviewSource, /FLOATING_CLIPBOARD_MORE_LIMIT/);
 assert.deepEqual(CLIPBOARD_CATEGORIES, ["全部", "文本", "图片", "视频", "链接", "文件"]);
 
@@ -164,14 +164,14 @@ assert.deepEqual(
 assert.deepEqual(getRecentClipboardItems([], 3), []);
 assert.deepEqual(getRecentClipboardItems([historyItem({ id: "empty", summary: " " })], 3), []);
 
-assert.equal(getFloatingClipboardItems(Array.from({ length: 11 }, (_, index) => systemItem(index + 1)), []).length, 10);
+assert.equal(getFloatingClipboardItems(Array.from({ length: 21 }, (_, index) => systemItem(index + 1)), []).length, 20);
 assert.equal(
   getFloatingClipboardItems(
-    Array.from({ length: 51 }, (_, index) => systemItem(index + 1)),
+    Array.from({ length: 101 }, (_, index) => systemItem(index + 1)),
     [],
     FLOATING_CLIPBOARD_HISTORY_LIMIT,
   ).length,
-  50,
+  100,
 );
 
 assert.deepEqual(

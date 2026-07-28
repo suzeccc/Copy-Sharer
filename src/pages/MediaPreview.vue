@@ -2,9 +2,7 @@
 import { computed, onMounted, onUnmounted, ref } from "vue";
 import { useRoute } from "vue-router";
 import FolderOpen from "lucide-vue-next/dist/esm/icons/folder-open.js";
-import ImageIcon from "lucide-vue-next/dist/esm/icons/image.js";
 import Minus from "lucide-vue-next/dist/esm/icons/minus.js";
-import PlaySquare from "lucide-vue-next/dist/esm/icons/square-play.js";
 import RotateCcw from "lucide-vue-next/dist/esm/icons/rotate-ccw.js";
 import ZoomIn from "lucide-vue-next/dist/esm/icons/zoom-in.js";
 import ZoomOut from "lucide-vue-next/dist/esm/icons/zoom-out.js";
@@ -293,36 +291,33 @@ onUnmounted(() => {
     class="relative h-screen w-screen overflow-hidden bg-transparent text-slate-100"
   >
     <div
+      data-media-preview-viewer-frame
       aria-hidden="true"
-      class="pointer-events-none absolute inset-px rounded-[17px] border border-white/[0.08] bg-black/[0.08] shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_18px_55px_rgba(0,0,0,0.18)] backdrop-blur-[3px]"
+      class="pointer-events-none absolute inset-2 rounded-[18px] border border-white/[0.20] bg-[#101317]/[0.94] shadow-[0_24px_70px_rgba(0,0,0,0.48),inset_0_1px_0_rgba(255,255,255,0.045)] backdrop-blur-2xl"
     />
 
     <header
-      class="absolute inset-x-3 top-3 z-30 flex items-center justify-between gap-3"
+      class="absolute inset-x-2 top-2 z-30 flex h-[58px] items-center justify-between gap-3 px-4 sm:px-5"
       data-window-drag-region
       @mousedown.capture="handleWindowDrag"
     >
       <div
         data-media-preview-glass-chrome
-        class="flex min-w-0 items-center gap-2 rounded-xl border border-white/[0.14] bg-[#0c1218]/65 p-1.5 pr-3 shadow-[0_12px_32px_rgba(0,0,0,0.28)] backdrop-blur-2xl"
+        class="flex min-w-0 items-center"
         data-window-drag-region
       >
-        <span class="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-white/[0.10] bg-white/[0.07] text-[color:var(--accent-text)]">
-          <ImageIcon v-if="isImage" class="h-4 w-4" />
-          <PlaySquare v-else class="h-4 w-4" />
-        </span>
-        <div class="min-w-0" data-window-drag-region>
-          <p data-i18n-ignore class="max-w-[360px] truncate text-[13px] font-semibold text-white/95">{{ title }}</p>
-          <p class="text-[10px] font-medium tracking-[0.08em] text-white/55">{{ subtitle }}</p>
+        <div class="flex min-w-0 flex-row-reverse items-center justify-end gap-2.5" data-window-drag-region>
+          <p data-i18n-ignore class="max-w-[220px] truncate border-l border-white/[0.13] pl-2.5 text-[11px] font-medium text-white/48 sm:max-w-[380px] sm:text-[12px]">{{ title }}</p>
+          <p class="shrink-0 text-[14px] font-semibold tracking-[-0.01em] text-white/95 sm:text-[15px]">{{ subtitle }}</p>
         </div>
       </div>
       <div
         data-media-preview-glass-chrome
-        class="flex shrink-0 items-center gap-1 rounded-xl border border-white/[0.14] bg-[#0c1218]/65 p-1.5 shadow-[0_12px_32px_rgba(0,0,0,0.28)] backdrop-blur-2xl"
+        class="flex shrink-0 items-center gap-1.5"
       >
         <button
           data-media-preview-minimize-button
-          class="grid h-8 w-8 place-items-center rounded-lg border border-transparent text-white/75 transition hover:border-white/10 hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent-line)]"
+          class="grid h-8 w-8 place-items-center rounded-full border border-white/[0.10] text-white/58 transition duration-150 hover:border-white/20 hover:bg-white/[0.08] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
           type="button"
           aria-label="隐藏预览"
           title="隐藏"
@@ -332,23 +327,24 @@ onUnmounted(() => {
           <Minus class="h-4 w-4" />
         </button>
         <button
-          class="grid h-8 w-8 place-items-center rounded-lg border border-transparent text-white/75 transition hover:border-red-300/20 hover:bg-red-500/70 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-300/50"
+          class="grid h-9 w-9 place-items-center rounded-full border border-white/[0.20] bg-white/[0.025] text-white/78 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] transition duration-150 hover:border-white/35 hover:bg-white/[0.10] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/35"
           type="button"
           aria-label="关闭预览"
           title="关闭"
           data-window-control
           @click="closeWindow"
         >
-          <X class="h-4 w-4" />
+          <X class="h-[17px] w-[17px]" />
         </button>
       </div>
     </header>
 
-    <main class="absolute inset-0 overflow-hidden px-3 pb-[4.75rem] pt-[4.75rem]">
+    <main class="absolute inset-x-6 bottom-[66px] top-[70px] overflow-visible">
       <div
         v-if="isImage"
-        class="relative grid h-full touch-none place-items-center overflow-hidden rounded-2xl border border-white/[0.10] bg-black/[0.08] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)]"
         data-media-preview-image-drag-surface
+        data-media-preview-stage
+        class="relative grid h-full touch-none place-items-center overflow-hidden rounded-xl border border-white/[0.10] bg-[#07090c] shadow-[inset_0_1px_0_rgba(255,255,255,0.025),0_12px_30px_rgba(0,0,0,0.24)]"
         @wheel.prevent="handleImagePreviewWheel"
         @pointerdown.left="handleImagePreviewDragPress"
         @pointermove="handleImagePreviewDragMove"
@@ -365,14 +361,14 @@ onUnmounted(() => {
           :max-size="1600"
           variant="preview"
           :alt="title"
-          class="!border-white/[0.12] !bg-black/[0.10] shadow-[0_22px_54px_rgba(0,0,0,0.42)] max-h-full max-w-full select-none rounded-xl object-contain will-change-transform"
+          class="media-preview-image !h-full !w-full !max-h-full !max-w-full !rounded-none !border-0 !bg-transparent select-none will-change-transform"
           :style="imagePreviewTransformStyle"
           draggable="false"
         />
       </div>
 
       <div v-else class="grid h-full grid-rows-[minmax(0,1fr)_auto] gap-3">
-        <div class="overflow-hidden rounded-2xl border border-white/[0.12] bg-black/45 shadow-[0_22px_54px_rgba(0,0,0,0.42)]">
+        <div data-media-preview-stage class="overflow-hidden rounded-xl border border-white/[0.10] bg-black shadow-[0_12px_30px_rgba(0,0,0,0.24)]">
           <video
             v-if="videoSrc"
             ref="videoRef"
@@ -411,60 +407,70 @@ onUnmounted(() => {
     <div
       v-if="isImage"
       data-media-preview-glass-toolbar
-      class="absolute bottom-3 left-1/2 z-30 flex -translate-x-1/2 items-center gap-1 rounded-2xl border border-white/[0.14] bg-[#0c1218]/75 p-1.5 text-white shadow-[0_14px_38px_rgba(0,0,0,0.34)] backdrop-blur-2xl"
+      class="absolute bottom-[28px] left-1/2 z-40 flex h-12 -translate-x-1/2 items-center gap-0.5 rounded-[24px] border border-white/[0.13] bg-[#20262c]/[0.94] px-2 text-white shadow-[0_14px_36px_rgba(0,0,0,0.44),inset_0_1px_0_rgba(255,255,255,0.055)] backdrop-blur-2xl"
     >
       <button
-        class="grid h-8 w-8 place-items-center rounded-lg text-white/72 transition hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent-line)] disabled:cursor-default disabled:opacity-35"
+        class="grid h-9 w-9 place-items-center rounded-full text-white/68 transition hover:bg-white/[0.09] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/25 disabled:cursor-default disabled:opacity-30"
         type="button"
         aria-label="缩小图片"
         title="缩小"
         :disabled="imagePreviewScale === MEDIA_PREVIEW_IMAGE_MIN_SCALE"
         @click="zoomImageOut"
       >
-        <ZoomOut class="h-4 w-4" />
+        <ZoomOut class="h-[18px] w-[18px]" />
       </button>
       <span
         data-media-preview-zoom-label
-        class="min-w-[52px] px-1 text-center font-mono text-[11px] font-semibold tabular-nums text-white/88"
+        class="min-w-[58px] px-1 text-center font-mono text-[12px] font-semibold tabular-nums text-white/88"
       >
         {{ imagePreviewZoomLabel }}
       </span>
       <button
-        class="grid h-8 w-8 place-items-center rounded-lg text-white/72 transition hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent-line)]"
+        class="grid h-9 w-9 place-items-center rounded-full text-white/68 transition hover:bg-white/[0.09] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/25"
         type="button"
         aria-label="放大图片"
         title="放大"
         @click="zoomImageIn"
       >
-        <ZoomIn class="h-4 w-4" />
+        <ZoomIn class="h-[18px] w-[18px]" />
       </button>
-      <span aria-hidden="true" class="mx-1 h-5 w-px bg-white/[0.12]" />
+      <span aria-hidden="true" class="mx-1.5 h-6 w-px bg-white/[0.10]" />
       <button
-        class="grid h-8 w-8 place-items-center rounded-lg text-white/72 transition hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent-line)]"
+        class="grid h-9 w-9 place-items-center rounded-full text-white/68 transition hover:bg-white/[0.09] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/25"
         type="button"
         aria-label="重置图片"
         title="重置缩放"
         @click="resetImagePreviewTransform"
       >
-        <RotateCcw class="h-4 w-4" />
+        <RotateCcw class="h-[18px] w-[18px]" />
       </button>
       <button
         v-if="historyId"
-        class="grid h-8 w-8 place-items-center rounded-lg text-white/72 transition hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent-line)]"
+        class="grid h-9 w-9 place-items-center rounded-full text-white/68 transition hover:bg-white/[0.09] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/25"
         type="button"
         aria-label="打开文件位置"
         title="打开文件位置"
         @click="revealSourceFile"
       >
-        <FolderOpen class="h-4 w-4" />
+        <FolderOpen class="h-[18px] w-[18px]" />
       </button>
     </div>
 
     <span
-      class="pointer-events-none absolute bottom-4 right-4 z-20 hidden items-center gap-1 rounded-lg border border-white/[0.10] bg-black/40 px-2 py-1 text-[10px] font-medium text-white/55 backdrop-blur-xl sm:flex"
+      class="pointer-events-none absolute bottom-[18px] right-5 z-30 hidden items-center gap-1.5 text-[11px] font-medium text-white/45 sm:flex"
     >
-      <kbd class="rounded border border-white/10 bg-white/[0.06] px-1 font-mono text-[9px] text-white/70">Esc</kbd>
+      <kbd class="rounded border border-white/[0.18] bg-white/[0.035] px-1.5 py-0.5 font-mono text-[9px] text-white/60">Esc</kbd>
       关闭
     </span>
   </section>
 </template>
+
+<style scoped>
+.media-preview-image :deep(img) {
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+</style>

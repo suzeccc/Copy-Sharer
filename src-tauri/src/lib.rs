@@ -6,12 +6,15 @@ mod device_store;
 mod discovery;
 mod error;
 mod file_transfer;
+mod file_transfer_http;
+mod file_transfer_store;
 mod history;
 mod i18n;
 mod library;
 mod mobile;
 mod models;
 mod network;
+mod network_diagnostics;
 mod notifications;
 mod ocr;
 mod security;
@@ -52,12 +55,19 @@ pub fn run() {
             notifications::configure_process_app_id(app.handle());
 
             #[cfg(desktop)]
-            app.handle().plugin(tauri_plugin_autostart::init(
-                MacosLauncher::LaunchAgent,
-                None,
-            ))?;
+            {
+                app.handle()
+                    .plugin(tauri_plugin_global_shortcut::Builder::new().build())?;
+                app.handle().plugin(tauri_plugin_autostart::init(
+                    MacosLauncher::LaunchAgent,
+                    None,
+                ))?;
+            }
 
-            tauri::async_runtime::block_on(state_for_setup.load_from_disk(app.handle()))?;
+            tauri::async_runtime::block_on(async {
+                state_for_setup.load_from_disk(app.handle()).await?;
+                file_transfer::initialize(app.handle(), &state_for_setup).await
+            })?;
             tray::setup_tray(app, state_for_setup.clone())?;
             sync::start_clipboard_monitor(app.handle().clone(), state_for_setup.clone());
             discovery::start_discovery_runtime(app.handle().clone(), state_for_setup.clone());
@@ -90,6 +100,8 @@ pub fn run() {
             commands::reject_device,
             commands::get_config,
             commands::update_config,
+            commands::get_network_diagnostics,
+            commands::repair_windows_firewall,
             commands::get_history,
             commands::set_history_item_pinned,
             commands::get_library,
@@ -104,6 +116,7 @@ pub fn run() {
             commands::get_library_storage_size,
             commands::get_library_image_thumbnail,
             commands::get_clipboard_history,
+            commands::read_clipboard_text,
             commands::recognize_clipboard_image,
             commands::translate_text,
             commands::select_file_for_transfer,
@@ -113,6 +126,7 @@ pub fn run() {
             commands::accept_file_transfer,
             commands::reject_file_transfer,
             commands::cancel_file_transfer,
+            commands::resume_file_transfer,
             commands::get_file_transfers,
             commands::get_transfer_save_dir,
             commands::select_transfer_save_dir,
@@ -131,8 +145,11 @@ pub fn run() {
             commands::get_history_file_thumbnail,
             commands::get_history_file_preview_path,
             commands::open_external_url,
+            commands::open_windows_network_settings,
             commands::show_main_window,
             commands::hide_main_window,
+            commands::exit_app,
+            commands::send_test_notification,
             commands::move_floating_window_to_cursor,
             commands::move_main_window_to_center
         ])
